@@ -234,7 +234,7 @@ export default function TransactionHistory() {
             Transaction History
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            View and manage all your transactions
+            View and manage all your transaction
           </p>
         </div>
 
