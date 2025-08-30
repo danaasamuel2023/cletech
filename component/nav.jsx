@@ -1,4 +1,4 @@
-// components/Navbar.jsx - Enhanced Eye-Catching Design
+// components/Navbar.jsx - Enhanced with Conditional Navigation & Better Animations
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -9,7 +9,7 @@ import {
   LogIn, UserPlus, Bell, Settings, LogOut, 
   TrendingUp, Wallet, FileCheck, GraduationCap,
   Database, Building2, HelpCircle, BarChart3,
-  Sparkles, Zap, Shield, Crown, Rocket
+  Sparkles, Zap, Shield, Crown, Rocket, Home, Info, Phone
 } from 'lucide-react';
 
 const Navbar = () => {
@@ -50,6 +50,7 @@ const Navbar = () => {
   const handleLinkClick = (href) => {
     setActiveLink(href);
     setIsMobileMenuOpen(false);
+    setIsUserMenuOpen(false);
   };
 
   const services = [
@@ -97,6 +98,49 @@ const Navbar = () => {
     },
   ];
 
+  // Mobile menu animation variants
+  const menuVariants = {
+    closed: {
+      opacity: 0,
+      height: 0,
+      transition: {
+        duration: 0.3,
+        ease: [0.4, 0.0, 0.2, 1],
+        staggerChildren: 0.05,
+        when: "afterChildren"
+      }
+    },
+    open: {
+      opacity: 1,
+      height: "auto",
+      transition: {
+        duration: 0.4,
+        ease: [0.4, 0.0, 0.2, 1],
+        staggerChildren: 0.07,
+        delayChildren: 0.1,
+        when: "beforeChildren"
+      }
+    }
+  };
+
+  const itemVariants = {
+    closed: {
+      opacity: 0,
+      x: -20,
+      transition: {
+        duration: 0.2
+      }
+    },
+    open: {
+      opacity: 1,
+      x: 0,
+      transition: {
+        duration: 0.3,
+        ease: [0.4, 0.0, 0.2, 1]
+      }
+    }
+  };
+
   return (
     <>
       {/* Main Navigation */}
@@ -131,90 +175,110 @@ const Navbar = () => {
               </motion.div>
             </Link>
 
-            {/* Desktop Navigation */}
+            {/* Desktop Navigation - Conditional Rendering */}
             <div className="hidden lg:flex items-center space-x-1">
-              <NavLink href="/" label="Home" onClick={() => handleLinkClick('/')} isActive={activeLink === '/'} />
+              <NavLink 
+                href="/" 
+                label="Home" 
+                icon={<Home className="w-4 h-4 mr-1" />}
+                onClick={() => handleLinkClick('/')} 
+                isActive={activeLink === '/'} 
+              />
 
-              {/* Enhanced Services Dropdown */}
-              <div className="relative">
-                <button
-                  onMouseEnter={() => setIsServicesOpen(true)}
-                  onMouseLeave={() => setIsServicesOpen(false)}
-                  className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
-                    activeLink.includes('purchase') 
-                      ? 'bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700' 
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <Database className="w-4 h-4 mr-1" />
-                  Services
-                  <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} />
-                </button>
-                
-                <AnimatePresence>
-                  {isServicesOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.2 }}
-                      className="absolute top-full left-0 mt-2 w-64 bg-white border border-gray-100 rounded-xl shadow-2xl overflow-hidden"
-                      onMouseEnter={() => setIsServicesOpen(true)}
-                      onMouseLeave={() => setIsServicesOpen(false)}
-                    >
-                      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-3 border-b border-gray-100">
-                        <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide">Our Services</p>
-                      </div>
-                      {services.map((service, index) => (
-                        <Link
-                          key={index}
-                          href={service.href}
-                          onClick={() => handleLinkClick(service.href)}
-                          className="group flex items-center px-4 py-3 hover:bg-gradient-to-r hover:from-purple-50 hover:to-indigo-50 transition-all duration-200"
-                        >
-                          <div className={`${service.color} mr-3 group-hover:scale-110 transition-transform`}>
-                            {service.icon}
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-800 group-hover:text-purple-700 transition-colors">
-                              {service.name}
-                            </div>
-                            <div className="text-xs text-gray-500">{service.description}</div>
-                          </div>
-                        </Link>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              {/* Only show Services dropdown if logged in */}
+              {isLoggedIn && (
+                <div className="relative">
+                  <button
+                    onMouseEnter={() => setIsServicesOpen(true)}
+                    onMouseLeave={() => setIsServicesOpen(false)}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+                      activeLink.includes('purchase') 
+                        ? 'bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700' 
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Database className="w-4 h-4 mr-1" />
+                    Services
+                    <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  <AnimatePresence>
+                    {isServicesOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                        transition={{ duration: 0.2, ease: [0.4, 0.0, 0.2, 1] }}
+                        className="absolute top-full left-0 mt-2 w-64 bg-white border border-gray-100 rounded-xl shadow-2xl overflow-hidden"
+                        onMouseEnter={() => setIsServicesOpen(true)}
+                        onMouseLeave={() => setIsServicesOpen(false)}
+                      >
+                        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-3 border-b border-gray-100">
+                          <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide">Our Services</p>
+                        </div>
+                        {services.map((service, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                          >
+                            <Link
+                              href={service.href}
+                              onClick={() => handleLinkClick(service.href)}
+                              className="group flex items-center px-4 py-3 hover:bg-gradient-to-r hover:from-purple-50 hover:to-indigo-50 transition-all duration-200"
+                            >
+                              <div className={`${service.color} mr-3 group-hover:scale-110 transition-transform`}>
+                                {service.icon}
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-medium text-gray-800 group-hover:text-purple-700 transition-colors">
+                                  {service.name}
+                                </div>
+                                <div className="text-xs text-gray-500">{service.description}</div>
+                              </div>
+                            </Link>
+                          </motion.div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
 
-              <NavLink 
-                href="/result-checker" 
-                label="Result Checker" 
-                icon={<GraduationCap className="w-4 h-4 mr-1" />}
-                onClick={() => handleLinkClick('/result-checker')}
-                isActive={activeLink === '/result-checker'}
-              />
-              
-              <NavLink 
-                href="/store_management" 
-                label="Store" 
-                icon={<Building2 className="w-4 h-4 mr-1" />}
-                onClick={() => handleLinkClick('/store_management')}
-                isActive={activeLink === '/store_management'}
-              />
-              
-              <NavLink 
-                href="/agents" 
-                label="Become an Agent" 
-                onClick={() => handleLinkClick('/agents')}
-                isActive={activeLink === '/agents'}
-                highlight
-              />
+              {/* Only show these links if logged in */}
+              {isLoggedIn && (
+                <>
+                  <NavLink 
+                    href="/result-checker" 
+                    label="Result Checker" 
+                    icon={<GraduationCap className="w-4 h-4 mr-1" />}
+                    onClick={() => handleLinkClick('/result-checker')}
+                    isActive={activeLink === '/result-checker'}
+                  />
+                  
+                  <NavLink 
+                    href="/store_management" 
+                    label="Store" 
+                    icon={<Building2 className="w-4 h-4 mr-1" />}
+                    onClick={() => handleLinkClick('/store_management')}
+                    isActive={activeLink === '/store_management'}
+                  />
+                  
+                  <NavLink 
+                    href="/agents" 
+                    label="Become an Agent" 
+                    onClick={() => handleLinkClick('/agents')}
+                    isActive={activeLink === '/agents'}
+                    highlight
+                  />
+                </>
+              )}
               
               <NavLink 
                 href="/about" 
                 label="About" 
+                icon={<Info className="w-4 h-4 mr-1" />}
                 onClick={() => handleLinkClick('/about')}
                 isActive={activeLink === '/about'}
               />
@@ -222,6 +286,7 @@ const Navbar = () => {
               <NavLink 
                 href="/contact" 
                 label="Contact" 
+                icon={<Phone className="w-4 h-4 mr-1" />}
                 onClick={() => handleLinkClick('/contact')}
                 isActive={activeLink === '/contact'}
               />
@@ -232,12 +297,16 @@ const Navbar = () => {
               {/* Notification Bell */}
               {isLoggedIn && (
                 <motion.button 
-                  whileHover={{ scale: 1.1 }}
+                  whileHover={{ scale: 1.1, rotate: 10 }}
                   whileTap={{ scale: 0.95 }}
                   className="relative p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
                 >
                   <Bell className="w-5 h-5" />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                  <motion.span 
+                    className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                  />
                 </motion.button>
               )}
 
@@ -260,9 +329,10 @@ const Navbar = () => {
                   <AnimatePresence>
                     {isUserMenuOpen && (
                       <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
+                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                        transition={{ duration: 0.2, ease: [0.4, 0.0, 0.2, 1] }}
                         className="absolute top-full right-0 mt-2 w-56 bg-white border border-gray-100 rounded-xl shadow-2xl overflow-hidden"
                       >
                         <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-3 border-b border-gray-100">
@@ -285,13 +355,15 @@ const Navbar = () => {
                 </div>
               ) : (
                 <>
-                  <Link 
-                    href="/auth" 
-                    onClick={() => handleLinkClick('/auth')}
-                    className="px-4 py-2 text-gray-700 hover:text-purple-600 font-medium transition-colors"
-                  >
-                    Login
-                  </Link>
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Link 
+                      href="/auth" 
+                      onClick={() => handleLinkClick('/auth')}
+                      className="px-4 py-2 text-gray-700 hover:text-purple-600 font-medium transition-colors"
+                    >
+                      Login
+                    </Link>
+                  </motion.div>
                   <motion.div
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -301,7 +373,12 @@ const Navbar = () => {
                       onClick={() => handleLinkClick('/auth')}
                       className="relative inline-flex items-center px-6 py-2.5 overflow-hidden font-medium text-white bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg group"
                     >
-                      <span className="absolute w-32 h-32 -mt-12 -ml-12 bg-white opacity-30 rounded-full blur-lg animate-ping"></span>
+                      <span className="absolute w-32 h-32 -mt-12 -ml-12 bg-white opacity-30 rounded-full blur-lg"></span>
+                      <motion.span 
+                        className="absolute w-32 h-32 -mt-12 -ml-12 bg-white opacity-30 rounded-full blur-lg"
+                        animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0.1, 0.3] }}
+                        transition={{ repeat: Infinity, duration: 3 }}
+                      />
                       <span className="relative flex items-center">
                         <Sparkles className="w-4 h-4 mr-2" />
                         Get Started
@@ -312,91 +389,135 @@ const Navbar = () => {
               )}
             </div>
 
-            {/* Mobile Menu Button */}
+            {/* Mobile Menu Button with Animation */}
             <motion.button
               whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
+              whileTap={{ scale: 0.9 }}
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="lg:hidden p-2 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
             >
-              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              <motion.div
+                animate={{ rotate: isMobileMenuOpen ? 90 : 0 }}
+                transition={{ duration: 0.3, ease: [0.4, 0.0, 0.2, 1] }}
+              >
+                {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </motion.div>
             </motion.button>
           </div>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu with Better Animations */}
         <AnimatePresence>
           {isMobileMenuOpen && (
             <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
+              variants={menuVariants}
+              initial="closed"
+              animate="open"
+              exit="closed"
               className="lg:hidden overflow-hidden"
             >
-              <div className="bg-white border-t border-gray-100">
+              <motion.div 
+                className="bg-white border-t border-gray-100"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
                 <div className="px-4 py-4 space-y-1">
-                  <MobileLink href="/" label="Home" onClick={() => handleLinkClick('/')} />
+                  <motion.div variants={itemVariants}>
+                    <MobileLink href="/" label="Home" icon={<Home className="w-4 h-4 mr-2" />} onClick={() => handleLinkClick('/')} />
+                  </motion.div>
                   
-                  <div className="px-3 py-2">
-                    <p className="text-xs text-purple-600 uppercase tracking-wider mb-2 font-semibold">Services</p>
-                    {services.map((service, index) => (
-                      <Link
-                        key={index}
-                        href={service.href}
-                        onClick={() => handleLinkClick(service.href)}
-                        className="flex items-center px-3 py-2.5 text-gray-700 hover:bg-gradient-to-r hover:from-purple-50 hover:to-indigo-50 rounded-lg transition-all mb-1"
-                      >
-                        <span className={`${service.color} mr-3`}>{service.icon}</span>
-                        <div>
-                          <div className="font-medium">{service.name}</div>
-                          <div className="text-xs text-gray-500">{service.description}</div>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
+                  {/* Only show services if logged in */}
+                  {isLoggedIn && (
+                    <motion.div variants={itemVariants} className="px-3 py-2">
+                      <p className="text-xs text-purple-600 uppercase tracking-wider mb-2 font-semibold">Services</p>
+                      {services.map((service, index) => (
+                        <motion.div
+                          key={index}
+                          variants={itemVariants}
+                          custom={index}
+                        >
+                          <Link
+                            href={service.href}
+                            onClick={() => handleLinkClick(service.href)}
+                            className="flex items-center px-3 py-2.5 text-gray-700 hover:bg-gradient-to-r hover:from-purple-50 hover:to-indigo-50 rounded-lg transition-all mb-1"
+                          >
+                            <span className={`${service.color} mr-3`}>{service.icon}</span>
+                            <div>
+                              <div className="font-medium">{service.name}</div>
+                              <div className="text-xs text-gray-500">{service.description}</div>
+                            </div>
+                          </Link>
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  )}
 
-                  <MobileLink 
-                    href="/result-checker" 
-                    label="Result Checker" 
-                    icon={<GraduationCap className="w-4 h-4 mr-2" />}
-                    onClick={() => handleLinkClick('/result-checker')}
-                  />
+                  {/* Conditionally show links based on login status */}
+                  {isLoggedIn && (
+                    <>
+                      <motion.div variants={itemVariants}>
+                        <MobileLink 
+                          href="/result-checker" 
+                          label="Result Checker" 
+                          icon={<GraduationCap className="w-4 h-4 mr-2" />}
+                          onClick={() => handleLinkClick('/result-checker')}
+                        />
+                      </motion.div>
+                      
+                      <motion.div variants={itemVariants}>
+                        <MobileLink 
+                          href="/store_management" 
+                          label="Store Management" 
+                          icon={<Building2 className="w-4 h-4 mr-2" />}
+                          onClick={() => handleLinkClick('/store_management')}
+                        />
+                      </motion.div>
+                      
+                      <motion.div variants={itemVariants}>
+                        <MobileLink 
+                          href="/agents" 
+                          label="Become an Agent" 
+                          onClick={() => handleLinkClick('/agents')}
+                          highlight
+                        />
+                      </motion.div>
+                    </>
+                  )}
                   
-                  <MobileLink 
-                    href="/store_management" 
-                    label="Store Management" 
-                    icon={<Building2 className="w-4 h-4 mr-2" />}
-                    onClick={() => handleLinkClick('/store_management')}
-                  />
+                  <motion.div variants={itemVariants}>
+                    <MobileLink href="/about" label="About" icon={<Info className="w-4 h-4 mr-2" />} onClick={() => handleLinkClick('/about')} />
+                  </motion.div>
                   
-                  <MobileLink 
-                    href="/agents" 
-                    label="Become an Agent" 
-                    onClick={() => handleLinkClick('/agents')}
-                    highlight
-                  />
-                  
-                  <MobileLink href="/about" label="About" onClick={() => handleLinkClick('/about')} />
-                  <MobileLink href="/contact" label="Contact" onClick={() => handleLinkClick('/contact')} />
+                  <motion.div variants={itemVariants}>
+                    <MobileLink href="/contact" label="Contact" icon={<Phone className="w-4 h-4 mr-2" />} onClick={() => handleLinkClick('/contact')} />
+                  </motion.div>
 
-                  <hr className="my-3 border-gray-100" />
+                  <motion.hr variants={itemVariants} className="my-3 border-gray-100" />
 
                   {isLoggedIn ? (
                     <>
-                      <MobileLink href="/api_keys" label="API Keys" icon={<BarChart3 className="w-4 h-4 mr-2" />} onClick={() => handleLinkClick('/api_keys')} />
-                      <MobileLink href="/wallet" label="Wallet" icon={<Wallet className="w-4 h-4 mr-2" />} onClick={() => handleLinkClick('/wallet')} />
-                      <MobileLink href="/purchase" label="Buy Data" icon={<Database className="w-4 h-4 mr-2" />} onClick={() => handleLinkClick('/purchase')} />
-                      <button 
-                        onClick={handleLogout} 
-                        className="w-full flex items-center px-3 py-2.5 text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-lg transition-all"
-                      >
-                        <LogOut className="w-4 h-4 mr-2" />
-                        Logout
-                      </button>
+                      <motion.div variants={itemVariants}>
+                        <MobileLink href="/api_keys" label="API Keys" icon={<BarChart3 className="w-4 h-4 mr-2" />} onClick={() => handleLinkClick('/api_keys')} />
+                      </motion.div>
+                      <motion.div variants={itemVariants}>
+                        <MobileLink href="/wallet" label="Wallet" icon={<Wallet className="w-4 h-4 mr-2" />} onClick={() => handleLinkClick('/wallet')} />
+                      </motion.div>
+                      <motion.div variants={itemVariants}>
+                        <MobileLink href="/purchase" label="Buy Data" icon={<Database className="w-4 h-4 mr-2" />} onClick={() => handleLinkClick('/purchase')} />
+                      </motion.div>
+                      <motion.div variants={itemVariants}>
+                        <button 
+                          onClick={handleLogout} 
+                          className="w-full flex items-center px-3 py-2.5 text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-lg transition-all"
+                        >
+                          <LogOut className="w-4 h-4 mr-2" />
+                          Logout
+                        </button>
+                      </motion.div>
                     </>
                   ) : (
-                    <div className="grid grid-cols-2 gap-2 px-3 py-2">
+                    <motion.div variants={itemVariants} className="grid grid-cols-2 gap-2 px-3 py-2">
                       <Link 
                         href="/auth" 
                         onClick={() => handleLinkClick('/auth')}
@@ -411,10 +532,10 @@ const Navbar = () => {
                       >
                         Sign Up
                       </Link>
-                    </div>
+                    </motion.div>
                   )}
                 </div>
-              </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
