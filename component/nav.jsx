@@ -197,6 +197,14 @@ const Navbar = () => {
               />
               
               <NavLink 
+                href="/store_management" 
+                label="Store" 
+                icon={<Building2 className="w-4 h-4 mr-1" />}
+                onClick={() => handleLinkClick('/store_management')}
+                isActive={activeLink === '/store_management'}
+              />
+              
+              <NavLink 
                 href="/agents" 
                 label="Become an Agent" 
                 onClick={() => handleLinkClick('/agents')}
@@ -353,6 +361,13 @@ const Navbar = () => {
                     label="Result Checker" 
                     icon={<GraduationCap className="w-4 h-4 mr-2" />}
                     onClick={() => handleLinkClick('/result-checker')}
+                  />
+                  
+                  <MobileLink 
+                    href="/store_management" 
+                    label="Store Management" 
+                    icon={<Building2 className="w-4 h-4 mr-2" />}
+                    onClick={() => handleLinkClick('/store_management')}
                   />
                   
                   <MobileLink 
