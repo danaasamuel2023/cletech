@@ -248,7 +248,7 @@ export default function TransactionHistory() {
           />
           <StatCard
             icon={ArrowDownRight}
-            label="Total Deposits"
+            label="Total Deposit"
             value={formatCurrency(statistics?.totalDeposits || 0)}
             color="green"
           />
