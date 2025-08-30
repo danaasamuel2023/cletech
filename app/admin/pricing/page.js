@@ -64,7 +64,7 @@ export default function PricingInventory() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/admin/pricing', {
+      const response = await fetch('https://cletech-server.onrender.com/api/admin/pricing', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -103,7 +103,7 @@ export default function PricingInventory() {
   const fetchInventoryData = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/admin/inventory', {
+      const response = await fetch('https://cletech-server.onrender.com/api/admin/inventory', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -132,7 +132,7 @@ export default function PricingInventory() {
   const initializeInventory = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/admin/inventory/initialize', {
+      const response = await fetch('https://cletech-server.onrender.com/api/admin/inventory/initialize', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -227,7 +227,7 @@ export default function PricingInventory() {
       };
 
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/admin/pricing', {
+      const response = await fetch('https://cletech-server.onrender.com/api/admin/pricing', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -293,7 +293,7 @@ export default function PricingInventory() {
       };
 
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/admin/pricing/${pricingId}`, {
+      const response = await fetch(`https://cletech-server.onrender.com/api/admin/pricing/${pricingId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -330,7 +330,7 @@ export default function PricingInventory() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/admin/pricing/${pricingId}`, {
+      const response = await fetch(`https://cletech-server.onrender.com/api/admin/pricing/${pricingId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -358,7 +358,7 @@ export default function PricingInventory() {
   const handleStockToggle = async (pricingId, stockType, currentValue) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/admin/pricing/${pricingId}/stock`, {
+      const response = await fetch(`https://cletech-server.onrender.com/api/admin/pricing/${pricingId}/stock`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -387,7 +387,7 @@ export default function PricingInventory() {
   const handleInventoryToggle = async (network, stockType, currentValue) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/admin/inventory/${network}`, {
+      const response = await fetch(`https://cletech-server.onrender.com/api/admin/inventory/${network}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

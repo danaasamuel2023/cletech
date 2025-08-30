@@ -60,7 +60,7 @@ export default function ResultCheckersManagement() {
         Object.entries(filters).filter(([_, v]) => v !== '')
       );
       
-      const response = await fetch(`http://localhost:5000/api/admin/result-checkers?${queryParams}`, {
+      const response = await fetch(`https://cletech-server.onrender.com/api/admin/result-checkers?${queryParams}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -177,7 +177,7 @@ export default function ResultCheckersManagement() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/admin/result-checkers/bulk', {
+      const response = await fetch('https://cletech-server.onrender.com/api/admin/result-checkers/bulk', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

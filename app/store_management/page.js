@@ -146,7 +146,7 @@ export default function AgentStoreManagement() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/store/my-store', {
+      const response = await fetch('https://cletech-server.onrender.com/api/store/my-store', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -207,7 +207,7 @@ export default function AgentStoreManagement() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/store/create', {
+      const response = await fetch('https://cletech-server.onrender.com/api/store/create', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -291,7 +291,7 @@ export default function AgentStoreManagement() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/store/settings', {
+      const response = await fetch('https://cletech-server.onrender.com/api/store/settings', {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -332,7 +332,7 @@ export default function AgentStoreManagement() {
       if (logoFile) formData.append('logo', logoFile);
       if (bannerFile) formData.append('banner', bannerFile);
 
-      const response = await fetch('http://localhost:5000/api/store/upload-images', {
+      const response = await fetch('https://cletech-server.onrender.com/api/store/upload-images', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -369,7 +369,7 @@ export default function AgentStoreManagement() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/store/pricing', {
+      const response = await fetch('https://cletech-server.onrender.com/api/store/pricing', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -403,7 +403,7 @@ export default function AgentStoreManagement() {
   const togglePricing = async (network, capacity) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/store/pricing/${network}/${capacity}/toggle`, {
+      const response = await fetch(`https://cletech-server.onrender.com/api/store/pricing/${network}/${capacity}/toggle`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -427,7 +427,7 @@ export default function AgentStoreManagement() {
   const toggleStoreStatus = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/store/toggle-status', {
+      const response = await fetch('https://cletech-server.onrender.com/api/store/toggle-status', {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -456,7 +456,7 @@ export default function AgentStoreManagement() {
   const fetchAnalytics = async (period = '7days') => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/store/analytics?period=${period}`, {
+      const response = await fetch(`https://cletech-server.onrender.com/api/store/analytics?period=${period}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -475,7 +475,7 @@ export default function AgentStoreManagement() {
   const fetchProfits = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/store/profits', {
+      const response = await fetch('https://cletech-server.onrender.com/api/store/profits', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -498,7 +498,7 @@ export default function AgentStoreManagement() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/store/withdraw-profit', {
+      const response = await fetch('https://cletech-server.onrender.com/api/store/withdraw-profit', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

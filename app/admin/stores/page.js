@@ -49,7 +49,7 @@ export default function StoresManagement() {
         Object.entries(filters).filter(([_, v]) => v !== '')
       );
       
-      const response = await fetch(`http://localhost:5000/api/admin/stores?${queryParams}`, {
+      const response = await fetch(`https://cletech-server.onrender.com/api/admin/stores?${queryParams}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -181,7 +181,7 @@ export default function StoresManagement() {
   const handleVerifyStore = async (storeId, status, reason) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/admin/stores/${storeId}/verify`, {
+      const response = await fetch(`https://cletech-server.onrender.com/api/admin/stores/${storeId}/verify`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -203,7 +203,7 @@ export default function StoresManagement() {
   const handleTogglePremium = async (storeId, isPremium) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/admin/stores/${storeId}/premium`, {
+      const response = await fetch(`https://cletech-server.onrender.com/api/admin/stores/${storeId}/premium`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -51,7 +51,7 @@ const ProfessionalDashboard = () => {
       }
 
       // Use the correct API endpoint from your routes
-      const response = await fetch('http://localhost:5000/api/dashboard', {
+      const response = await fetch('https://cletech-server.onrender.com/api/dashboard', {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json'

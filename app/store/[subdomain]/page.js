@@ -66,7 +66,7 @@ export default function PublicAgentStore() {
     setLoading(true);
     try {
       // Fetch store info
-      const storeResponse = await fetch(`http://localhost:5000/api/store/public/${subdomain}`);
+      const storeResponse = await fetch(`https://cletech-server.onrender.com/api/store/public/${subdomain}`);
       const storeData = await storeResponse.json();
 
       if (!storeData.success) {
@@ -83,7 +83,7 @@ export default function PublicAgentStore() {
       }
 
       // Fetch products
-      const productsResponse = await fetch(`http://localhost:5000/api/store/public/${subdomain}/products`);
+      const productsResponse = await fetch(`https://cletech-server.onrender.com/api/store/public/${subdomain}/products`);
       const productsData = await productsResponse.json();
 
       if (productsData.success) {

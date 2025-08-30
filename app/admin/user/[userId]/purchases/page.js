@@ -49,7 +49,7 @@ const fetchUserPurchases = async () => {
     });
 
     const response = await fetch(
-      `http://localhost:5000/api/admin/users/${userId}/purchases?${queryParams}`,
+      `https://cletech-server.onrender.com/api/admin/users/${userId}/purchases?${queryParams}`,
       {
         headers: { 'Authorization': `Bearer ${token}` }
       }
@@ -82,7 +82,7 @@ const fetchUserPurchases = async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `http://localhost:5000/api/admin/users/${userId}/purchases/summary?days=30`,
+        `https://cletech-server.onrender.com/api/admin/users/${userId}/purchases/summary?days=30`,
         {
           headers: { 'Authorization': `Bearer ${token}` }
         }

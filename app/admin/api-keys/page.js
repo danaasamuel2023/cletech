@@ -43,7 +43,7 @@ export default function ApiKeysManagement() {
         ...(selectedUser && { userId: selectedUser })
       });
 
-      const response = await fetch(`http://localhost:5000/api/admin/api-keys?${params}`, {
+      const response = await fetch(`https://cletech-server.onrender.com/api/admin/api-keys?${params}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -62,7 +62,7 @@ export default function ApiKeysManagement() {
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/admin/api-keys/stats', {
+      const response = await fetch('https://cletech-server.onrender.com/api/admin/api-keys/stats', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -78,7 +78,7 @@ export default function ApiKeysManagement() {
   const handleToggleStatus = async (keyId, currentStatus) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/admin/api-keys/${keyId}/status`, {
+      const response = await fetch(`https://cletech-server.onrender.com/api/admin/api-keys/${keyId}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

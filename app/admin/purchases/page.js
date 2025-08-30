@@ -53,7 +53,7 @@ export default function PurchasesManagement() {
         Object.entries(filters).filter(([_, v]) => v !== '')
       );
       
-      const response = await fetch(`http://localhost:5000/api/admin/purchases?${queryParams}`, {
+      const response = await fetch(`https://cletech-server.onrender.com/api/admin/purchases?${queryParams}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -74,7 +74,7 @@ export default function PurchasesManagement() {
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/admin/analytics/dashboard', {
+      const response = await fetch('https://cletech-server.onrender.com/api/admin/analytics/dashboard', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -105,7 +105,7 @@ export default function PurchasesManagement() {
   const handleSingleStatusUpdate = async (purchaseId, newStatus, adminNotes = '') => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/admin/purchases/${purchaseId}`, {
+      const response = await fetch(`https://cletech-server.onrender.com/api/admin/purchases/${purchaseId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -141,7 +141,7 @@ export default function PurchasesManagement() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/admin/purchases/bulk-status`, {
+      const response = await fetch(`https://cletech-server.onrender.com/api/admin/purchases/bulk-status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

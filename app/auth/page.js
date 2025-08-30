@@ -24,7 +24,7 @@ const AuthPage = () => {
     referredBy: ''
   });
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/auth';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://cletech-server.onrender.com/api/auth';
 
   // Clear errors when switching tabs
   const handleTabChange = (tab) => {
