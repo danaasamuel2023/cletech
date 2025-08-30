@@ -1,4 +1,4 @@
-// app/purchase/page.js - Fixed with Suspense Boundary
+// app/purchase/page.js - Updated with Network Cards
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
@@ -9,6 +9,137 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
+
+// Network Card Component
+const NetworkCard = ({ network }) => {
+  // MTN Logo SVG
+  const MTNLogo = () => (
+    <svg width="100" height="100" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="100" cy="100" r="85" fill="#ffcc00" stroke="#000" strokeWidth="2"/>
+      <path d="M50 80 L80 140 L100 80 L120 140 L150 80" stroke="#000" strokeWidth="12" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+      <text x="100" y="170" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="28">MTN</text>
+    </svg>
+  );
+
+  // Telecel Logo SVG
+  const TelecelLogo = () => (
+    <svg width="100" height="100" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="100" cy="100" r="85" fill="#ffffff" stroke="#cc0000" strokeWidth="2"/>
+      <text x="100" y="110" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="32" fill="#cc0000">TELECEL</text>
+      <path d="M50 125 L150 125" stroke="#cc0000" strokeWidth="5" strokeLinecap="round"/>
+    </svg>
+  );
+
+  // AirtelTigo Logo SVG
+  const AirtelTigoLogo = () => (
+    <svg width="100" height="100" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="atGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style={{ stopColor: '#0066CC', stopOpacity: 1 }} />
+          <stop offset="100%" style={{ stopColor: '#7C3AED', stopOpacity: 1 }} />
+        </linearGradient>
+      </defs>
+      <circle cx="100" cy="100" r="85" fill="url(#atGradient)" stroke="#1e40af" strokeWidth="3"/>
+      <text x="100" y="110" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="55" fill="white">AT</text>
+      <text x="100" y="140" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="20" fill="white">AirtelTigo</text>
+    </svg>
+  );
+
+  // Yello Logo SVG (similar to MTN but with different branding)
+  const YelloLogo = () => (
+    <svg width="100" height="100" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="100" cy="100" r="85" fill="#FF6B35" stroke="#fff" strokeWidth="2"/>
+      <text x="100" y="120" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="40" fill="white">YELLO</text>
+    </svg>
+  );
+
+  const networkConfigs = {
+    MTN: {
+      logo: <MTNLogo />,
+      bgColor: 'bg-yellow-400',
+      textColor: 'text-black',
+      title: 'MTN Data Bundles',
+      subtitle: 'Ghana\'s Everywhere You Go Network',
+      features: ['Non-Expiry Bundles Available', 'Instant Delivery', 'Best Coverage Nationwide']
+    },
+    TELECEL: {
+      logo: <TelecelLogo />,
+      bgColor: 'bg-gradient-to-br from-red-600 to-red-700',
+      textColor: 'text-white',
+      title: 'Telecel Premium Bundles',
+      subtitle: 'Premium Quality Network',
+      features: ['Non-Expiry Options', 'Premium Service', 'Reliable Connection']
+    },
+    AT: {
+      logo: <AirtelTigoLogo />,
+      bgColor: 'bg-gradient-to-br from-blue-600 to-purple-600',
+      textColor: 'text-white',
+      title: 'AirtelTigo Data Bundles',
+      subtitle: 'Smart Choice for Smart People',
+      features: ['30-Day Validity', 'Affordable Rates', 'Wide Coverage']
+    },
+    YELLO: {
+      logo: <YelloLogo />,
+      bgColor: 'bg-gradient-to-br from-orange-500 to-orange-600',
+      textColor: 'text-white',
+      title: 'Yello Special Bundles',
+      subtitle: 'Your Affordable Network Solution',
+      features: ['Budget-Friendly', 'Flexible Plans', 'Great Value']
+    }
+  };
+
+  const config = networkConfigs[network] || networkConfigs.MTN;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className={`${config.bgColor} ${config.textColor} rounded-lg shadow-xl p-6 mb-6`}
+    >
+      <div className="flex flex-col md:flex-row items-center gap-6">
+        {/* Logo Section */}
+        <div className="flex-shrink-0">
+          {config.logo}
+        </div>
+        
+        {/* Info Section */}
+        <div className="flex-1 text-center md:text-left">
+          <h2 className="text-2xl font-bold mb-2">{config.title}</h2>
+          <p className="text-lg opacity-90 mb-4">{config.subtitle}</p>
+          
+          {/* Features */}
+          <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+            {config.features.map((feature, index) => (
+              <span 
+                key={index}
+                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  network === 'MTN' 
+                    ? 'bg-black text-yellow-400' 
+                    : 'bg-white/20 backdrop-blur-sm'
+                }`}
+              >
+                ✓ {feature}
+              </span>
+            ))}
+          </div>
+        </div>
+        
+        {/* Stats Section (optional) */}
+        <div className="grid grid-cols-2 gap-4 text-center">
+          <div>
+            <div className="text-2xl font-bold">24/7</div>
+            <div className="text-sm opacity-80">Support</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold">Fast</div>
+            <div className="text-sm opacity-80">Delivery</div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
 
 // Main component that uses useSearchParams
 function DataPurchaseContent() {
@@ -209,7 +340,7 @@ function DataPurchaseContent() {
     }
   };
 
-  // Bulk Purchase Functions
+  // Bulk Purchase Functions (remain the same)
   const parseBulkInput = () => {
     const lines = bulkManualInput.trim().split('\n');
     const parsed = [];
@@ -231,7 +362,6 @@ function DataPurchaseContent() {
       const phoneNumber = parts[0];
       const capacity = parseFloat(parts[1]);
 
-      // Clean phone number
       let cleanedPhone = phoneNumber.replace(/\D/g, '');
       if (cleanedPhone.startsWith('233')) {
         cleanedPhone = cleanedPhone.substring(3);
@@ -299,12 +429,6 @@ function DataPurchaseContent() {
     try {
       const token = localStorage.getItem('token');
       
-      console.log('Sending bulk purchase data:', {
-        purchases: bulkPurchases,
-        network: selectedNetwork,
-        gateway: 'wallet'
-      });
-      
       const response = await fetch('https://cletech-server.onrender.com/api/purchase/bulk', {
         method: 'POST',
         headers: {
@@ -318,10 +442,7 @@ function DataPurchaseContent() {
         })
       });
 
-      console.log('Response status:', response.status);
       const text = await response.text();
-      console.log('Response text:', text);
-
       let data;
       try {
         data = JSON.parse(text);
@@ -343,7 +464,6 @@ function DataPurchaseContent() {
         }, 5000);
       } else {
         setError(data.message || 'Bulk purchase failed');
-        console.error('Server error:', data);
       }
     } catch (error) {
       console.error('Bulk purchase error:', error);
@@ -368,10 +488,7 @@ function DataPurchaseContent() {
         body: formData
       });
 
-      console.log('Response status:', response.status);
       const text = await response.text();
-      console.log('Response text:', text);
-
       let data;
       try {
         data = JSON.parse(text);
@@ -455,12 +572,15 @@ function DataPurchaseContent() {
         )}
       </AnimatePresence>
 
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        {/* Header */}
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Network Card Display */}
+        {selectedNetwork && <NetworkCard network={selectedNetwork} />}
+
+        {/* Main Purchase Form */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              BUY {selectedNetwork} BUNDLES
+              Purchase {selectedNetwork} Data
             </h1>
             <button
               onClick={() => setShowBulkModal(true)}
@@ -556,7 +676,7 @@ function DataPurchaseContent() {
               </button>
               
               <button
-                onClick={() => window.location.href = '/wallet/topup'}
+                onClick={() => window.location.href = '/deposit'}
                 className="flex-1 px-6 py-3 bg-gray-900 dark:bg-white hover:bg-gray-800 dark:hover:bg-gray-100 text-white dark:text-gray-900 font-medium rounded-lg transition-colors"
               >
                 Topup Wallet
@@ -590,7 +710,7 @@ function DataPurchaseContent() {
           </div>
         </div>
 
-        {/* Bulk Purchase Modal */}
+        {/* Bulk Purchase Modal (remains the same) */}
         <AnimatePresence>
           {showBulkModal && (
             <motion.div
@@ -607,7 +727,7 @@ function DataPurchaseContent() {
                 className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Modal content remains the same... */}
+                {/* Modal content remains exactly the same as before */}
                 {/* Modal Header */}
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -764,7 +884,6 @@ function DataPurchaseContent() {
                   </div>
                 )}
 
-                {/* Rest of the modal content remains the same... */}
                 {/* Parsed Results */}
                 {bulkPurchases.length > 0 && (
                   <div className="mt-6 space-y-4">
