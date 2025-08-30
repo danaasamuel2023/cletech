@@ -7,7 +7,7 @@ import {
   CheckCircle, Zap, Gift, TrendingUp, MessageCircle, Share2,
   Facebook, Instagram, Twitter, Copy, ExternalLink, Loader2,
   X, Plus, Minus, AlertCircle, Check, ArrowRight, Sparkles,
-  Moon, Sun, Trash2
+  Moon, Sun, Trash2, Wallet, CreditCard, Home, Crown, UserPlus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams } from 'next/navigation';
@@ -25,47 +25,118 @@ export default function PublicAgentStore() {
   const [groupedProducts, setGroupedProducts] = useState({});
   const [loading, setLoading] = useState(true);
   const [selectedNetwork, setSelectedNetwork] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [cart, setCart] = useState([]);
-  const [showCart, setShowCart] = useState(false);
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [showClosedModal, setShowClosedModal] = useState(false);
-  const [purchasing, setPurchasing] = useState(false);
+  const [selectedBundleIndex, setSelectedBundleIndex] = useState(null);
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  // Customer Form
-  const [customerForm, setCustomerForm] = useState({
-    phoneNumber: '',
-    email: '',
-    name: ''
-  });
+  const [showClosedModal, setShowClosedModal] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  const [bundleMessages, setBundleMessages] = useState({});
 
   // Networks Configuration
   const networks = [
-    { id: 'MTN', name: 'MTN', color: '#FFCB05', icon: '📱' },
-    { id: 'TELECEL', name: 'Telecel', color: '#E30613', icon: '📞' },
-    { id: 'AT', name: 'AirtelTigo', color: '#0066CC', icon: '📲' },
-    { id: 'YELLO', name: 'Yello', color: '#FF6B35', icon: '☎️' }
+    { id: 'MTN', name: 'MTN', color: '#FFCB05' },
+    { id: 'TELECEL', name: 'Telecel', color: '#E30613' },
+    { id: 'AT', name: 'AirtelTigo', color: '#0066CC' },
+    { id: 'YELLO', name: 'Yello', color: '#FFCB05' }
   ];
 
+  // Logo Components
+  const MTNLogo = () => (
+    <svg width="80" height="80" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="100" cy="100" r="85" fill="#ffcc00" stroke="#000" strokeWidth="2"/>
+      <path d="M50 80 L80 140 L100 80 L120 140 L150 80" stroke="#000" strokeWidth="12" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+      <text x="100" y="170" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="28">MTN</text>
+    </svg>
+  );
+
+  const TelecelLogo = () => (
+    <svg width="80" height="80" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="100" cy="100" r="85" fill="#ffffff" stroke="#cc0000" strokeWidth="2"/>
+      <text x="100" y="110" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="32" fill="#cc0000">TELECEL</text>
+      <path d="M50 125 L150 125" stroke="#cc0000" strokeWidth="5" strokeLinecap="round"/>
+      <text x="100" y="150" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="20" fill="#cc0000">PREMIUM</text>
+    </svg>
+  );
+
+  const AirtelTigoLogo = () => (
+    <svg width="80" height="80" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="atGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style={{ stopColor: '#0066CC', stopOpacity: 1 }} />
+          <stop offset="100%" style={{ stopColor: '#7C3AED', stopOpacity: 1 }} />
+        </linearGradient>
+      </defs>
+      <circle cx="100" cy="100" r="85" fill="url(#atGradient)" stroke="#1e40af" strokeWidth="3"/>
+      <text x="100" y="110" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="55" fill="white">AT</text>
+      <text x="100" y="140" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="20" fill="white">AirtelTigo</text>
+    </svg>
+  );
+
+  const YelloLogo = () => (
+    <svg width="80" height="80" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="100" cy="100" r="85" fill="#ffcc00" stroke="#000" strokeWidth="2"/>
+      <text x="100" y="120" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="40" fill="#000">YELLO</text>
+    </svg>
+  );
+
+  const getNetworkLogo = (networkId) => {
+    switch(networkId) {
+      case 'MTN': return <MTNLogo />;
+      case 'TELECEL': return <TelecelLogo />;
+      case 'AT': return <AirtelTigoLogo />;
+      case 'YELLO': return <YelloLogo />;
+      default: return <MTNLogo />;
+    }
+  };
+
+  const getNetworkStyles = (networkId) => {
+    switch(networkId) {
+      case 'MTN':
+      case 'YELLO':
+        return {
+          cardBg: 'bg-yellow-400',
+          textColor: 'text-black',
+          bottomBg: 'bg-black',
+          bottomText: 'text-white'
+        };
+      case 'TELECEL':
+        return {
+          cardBg: 'bg-gradient-to-tr from-red-700 to-red-500',
+          textColor: 'text-white',
+          bottomBg: 'bg-black/80',
+          bottomText: 'text-white'
+        };
+      case 'AT':
+        return {
+          cardBg: 'bg-gradient-to-r from-blue-700 to-purple-700',
+          textColor: 'text-white',
+          bottomBg: 'bg-black',
+          bottomText: 'text-white'
+        };
+      default:
+        return {
+          cardBg: 'bg-gray-400',
+          textColor: 'text-white',
+          bottomBg: 'bg-black',
+          bottomText: 'text-white'
+        };
+    }
+  };
+
   useEffect(() => {
-    // Load dark mode preference from localStorage
     const savedDarkMode = localStorage.getItem('darkMode') === 'true';
     setDarkMode(savedDarkMode);
     if (savedDarkMode) {
       document.documentElement.classList.add('dark');
     }
 
-    // Fetch store data
     fetchStoreData();
-    loadCartFromStorage();
   }, [subdomain]);
 
   const fetchStoreData = async () => {
     setLoading(true);
     try {
-      // Fetch store info
       const storeResponse = await fetch(`https://cletech-server.onrender.com/api/store/public/${subdomain}`);
       const storeData = await storeResponse.json();
 
@@ -77,12 +148,10 @@ export default function PublicAgentStore() {
 
       setStore(storeData.data);
 
-      // Check if store is closed and show modal
       if (!storeData.data.operatingStatus?.isOpen) {
         setShowClosedModal(true);
       }
 
-      // Fetch products
       const productsResponse = await fetch(`https://cletech-server.onrender.com/api/store/public/${subdomain}/products`);
       const productsData = await productsResponse.json();
 
@@ -90,7 +159,6 @@ export default function PublicAgentStore() {
         setProducts(productsData.data.products);
         setGroupedProducts(productsData.data.grouped);
         
-        // Set default network
         const availableNetworks = Object.keys(productsData.data.grouped);
         if (availableNetworks.length > 0) {
           setSelectedNetwork(availableNetworks[0]);
@@ -116,60 +184,6 @@ export default function PublicAgentStore() {
     }
   };
 
-  const loadCartFromStorage = () => {
-    const savedCart = localStorage.getItem(`cart_${subdomain}`);
-    if (savedCart) {
-      setCart(JSON.parse(savedCart));
-    }
-  };
-
-  const saveCartToStorage = (cartItems) => {
-    localStorage.setItem(`cart_${subdomain}`, JSON.stringify(cartItems));
-  };
-
-  const addToCart = (product) => {
-    const existingItem = cart.find(item => item.id === product.id);
-    
-    let newCart;
-    if (existingItem) {
-      newCart = cart.map(item =>
-        item.id === product.id
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      );
-    } else {
-      newCart = [...cart, { ...product, quantity: 1 }];
-    }
-    
-    setCart(newCart);
-    saveCartToStorage(newCart);
-    setSuccess(`${product.network} ${product.capacity}GB added to cart`);
-    setTimeout(() => setSuccess(''), 2000);
-  };
-
-  const updateCartQuantity = (productId, change) => {
-    const newCart = cart.map(item => {
-      if (item.id === productId) {
-        const newQuantity = item.quantity + change;
-        return newQuantity <= 0 ? null : { ...item, quantity: newQuantity };
-      }
-      return item;
-    }).filter(Boolean);
-    
-    setCart(newCart);
-    saveCartToStorage(newCart);
-  };
-
-  const removeFromCart = (productId) => {
-    const newCart = cart.filter(item => item.id !== productId);
-    setCart(newCart);
-    saveCartToStorage(newCart);
-  };
-
-  const getTotalPrice = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
-  };
-
   const formatPhone = (value) => {
     let cleaned = value.replace(/\D/g, '');
     
@@ -191,10 +205,29 @@ export default function PublicAgentStore() {
     return cleaned ? `0${cleaned}` : '';
   };
 
-  const handlePurchase = async () => {
-    const phoneRegex = /^(\+233|0)[2-9]\d{8}$/;
-    if (!phoneRegex.test(customerForm.phoneNumber.replace(/\s/g, ''))) {
-      setError('Please enter a valid Ghana phone number');
+  const handleSelectBundle = (bundleIndex, networkId) => {
+    setSelectedBundleIndex(bundleIndex);
+    setSelectedNetwork(networkId);
+    setPhoneNumber('');
+    setBundleMessages({});
+  };
+
+  const handlePurchase = async (bundle, index) => {
+    setBundleMessages(prev => ({ ...prev, [index]: null }));
+    
+    if (!phoneNumber || phoneNumber.replace(/\s/g, '').length < 10) {
+      setBundleMessages(prev => ({ 
+        ...prev, 
+        [index]: { text: 'Please enter a valid phone number', type: 'error' } 
+      }));
+      return;
+    }
+
+    if (!store.operatingStatus?.isOpen) {
+      setBundleMessages(prev => ({ 
+        ...prev, 
+        [index]: { text: 'Store is currently closed', type: 'error' } 
+      }));
       return;
     }
 
@@ -202,13 +235,12 @@ export default function PublicAgentStore() {
     setError('');
 
     setTimeout(() => {
-      setSuccess('Order placed successfully! You will receive your data bundles shortly.');
-      setCart([]);
-      saveCartToStorage([]);
-      setShowCheckout(false);
-      setShowCart(false);
-      setCustomerForm({ phoneNumber: '', email: '', name: '' });
+      setSuccess(`${bundle.capacity}GB bundle purchased successfully for ${phoneNumber}!`);
+      setSelectedBundleIndex(null);
+      setPhoneNumber('');
       setPurchasing(false);
+      
+      setTimeout(() => setSuccess(''), 3000);
     }, 2000);
   };
 
@@ -235,9 +267,9 @@ export default function PublicAgentStore() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
           <p className="text-gray-600 dark:text-gray-300">Loading store...</p>
         </div>
       </div>
@@ -246,7 +278,7 @@ export default function PublicAgentStore() {
 
   if (!store) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <Store className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Store Not Found</h2>
@@ -257,531 +289,342 @@ export default function PublicAgentStore() {
   }
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'dark bg-gray-900' : 'bg-gradient-to-br from-blue-50 via-white to-purple-50'}`}>
-      {/* Dark Mode Toggle - Fixed Position */}
+    <div className={`min-h-screen ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+      {/* Dark Mode Toggle */}
       <button
         onClick={toggleDarkMode}
-        className="fixed top-4 left-4 z-50 p-3 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-gray-700"
-        aria-label="Toggle dark mode"
+        className="fixed top-4 right-4 z-50 p-3 bg-white dark:bg-gray-800 rounded-full shadow-lg hover:shadow-xl transition-all"
       >
-        {darkMode ? (
-          <Sun className="w-5 h-5 text-yellow-500" />
-        ) : (
-          <Moon className="w-5 h-5 text-gray-700" />
-        )}
+        {darkMode ? <Sun className="w-5 h-5 text-yellow-500" /> : <Moon className="w-5 h-5 text-gray-700" />}
       </button>
 
-      {/* Success/Error Messages */}
-      {success && (
-        <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center max-w-sm animate-fade-in">
-          <Check className="w-5 h-5 mr-2" />
-          {success}
-        </div>
-      )}
-      {error && (
-        <div className="fixed top-4 right-4 z-50 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center max-w-sm animate-fade-in">
-          <AlertCircle className="w-5 h-5 mr-2" />
-          {error}
-        </div>
-      )}
+      {/* Success/Error Toasts */}
+      <AnimatePresence>
+        {success && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center"
+          >
+            <Check className="w-5 h-5 mr-2" />
+            {success}
+          </motion.div>
+        )}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center"
+          >
+            <AlertCircle className="w-5 h-5 mr-2" />
+            {error}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Store Header */}
-      <div className="relative">
-        {/* Banner */}
-        <div className="h-48 md:h-64 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-800 dark:to-purple-800 relative overflow-hidden">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center text-white">
-              <Sparkles className="w-12 h-12 mx-auto mb-2 animate-pulse" />
-              <p className="text-lg font-medium">Best Data Bundle Prices</p>
-            </div>
-          </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-        </div>
-
-        {/* Store Info */}
-        <div className="max-w-6xl mx-auto px-4 -mt-16 relative z-10">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 transition-colors duration-300">
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-              {/* Logo */}
-              <div className="w-24 h-24 md:w-32 md:h-32 bg-white dark:bg-gray-700 rounded-xl shadow-md p-2">
-                <div className="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-lg flex items-center justify-center">
-                  <Store className="w-12 h-12 text-blue-600 dark:text-blue-400" />
-                </div>
+      {/* Header */}
+      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-6xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <Store className="w-7 h-7 text-white" />
               </div>
-
-              {/* Store Details */}
-              <div className="flex-1 text-center md:text-left">
-                <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
-                  <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">{store.storeName}</h1>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  {store.storeName}
                   {store.operatingStatus?.isOpen ? (
-                    <span className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-sm font-medium rounded-full">
+                    <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs font-medium rounded-full">
                       Open
                     </span>
                   ) : (
-                    <span className="px-3 py-1 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 text-sm font-medium rounded-full">
+                    <span className="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 text-xs font-medium rounded-full">
                       Closed
                     </span>
                   )}
-                </div>
-                
-                {store.description && (
-                  <p className="text-gray-600 dark:text-gray-300 mb-4">{store.description}</p>
-                )}
-
-                {/* Trust Badges */}
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-4">
-                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                    <Shield className="w-4 h-4 mr-1 text-green-600 dark:text-green-400" />
-                    Verified Store
-                  </div>
-                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                    <Zap className="w-4 h-4 mr-1 text-yellow-600 dark:text-yellow-400" />
-                    Instant Delivery
-                  </div>
-                  <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                    <Users className="w-4 h-4 mr-1 text-blue-600 dark:text-blue-400" />
-                    {Math.floor(Math.random() * 500) + 100}+ Customers
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex flex-wrap gap-3 justify-center md:justify-start">
-                  <button className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white font-medium rounded-lg transition-colors">
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Join WhatsApp Group
-                  </button>
-                  
-                  <button className="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-lg transition-colors">
-                    <Phone className="w-4 h-4 mr-2" />
-                    Contact Us
-                  </button>
-
-                  <button
-                    onClick={shareStore}
-                    className="inline-flex items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-lg transition-colors"
-                  >
-                    <Share2 className="w-4 h-4 mr-2" />
-                    Share
-                  </button>
-                </div>
+                </h1>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Best Data Bundle Prices</p>
               </div>
-
-              {/* Contact Info */}
-              <div className="md:text-right space-y-2">
-                <div className="flex items-center justify-center md:justify-end text-sm text-gray-600 dark:text-gray-400">
-                  <Phone className="w-4 h-4 mr-2" />
-                  {store.whatsappNumber}
-                </div>
-                {store.contactEmail && (
-                  <div className="flex items-center justify-center md:justify-end text-sm text-gray-600 dark:text-gray-400">
-                    <Mail className="w-4 h-4 mr-2" />
-                    {store.contactEmail}
-                  </div>
-                )}
-                {store.location?.city && (
-                  <div className="flex items-center justify-center md:justify-end text-sm text-gray-600 dark:text-gray-400">
-                    <MapPin className="w-4 h-4 mr-2" />
-                    {store.location.city}, {store.location.region}
-                  </div>
-                )}
-              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <button
+                onClick={shareStore}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <Share2 className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Products Section */}
+      {/* WhatsApp Contact Strip */}
+      <div className="bg-gradient-to-r from-green-600 to-green-700 text-white py-3">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-6">
+              {/* Owner WhatsApp */}
+              <a
+                href={`https://wa.me/${store.whatsappNumber}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <Phone className="w-4 h-4" />
+                <span className="text-sm font-medium">Owner: {store.whatsappNumber}</span>
+              </a>
+
+              {/* WhatsApp Community */}
+              <a
+                href={store.whatsappCommunityLink || `https://wa.me/${store.whatsappNumber}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span className="text-sm font-medium">Join Community</span>
+              </a>
+            </div>
+
+            {/* Quick Contact Buttons */}
+            <div className="flex items-center gap-2">
+              <a
+                href={`https://wa.me/${store.whatsappNumber}?text=Hi, I want to buy data bundles`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-1.5 bg-white text-green-700 font-medium rounded-lg hover:bg-gray-100 transition-colors text-sm flex items-center gap-2"
+              >
+                <MessageCircle className="w-4 h-4" />
+                Quick Order
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Network Tabs */}
-        <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Select Network</h2>
-          <div className="flex flex-wrap gap-3">
-            {Object.keys(groupedProducts).map((network) => {
-              const networkConfig = networks.find(n => n.id === network);
-              return (
-                <button
-                  key={network}
-                  onClick={() => setSelectedNetwork(network)}
-                  className={`px-6 py-3 rounded-lg font-medium transition-all transform hover:scale-105 ${
-                    selectedNetwork === network
-                      ? 'text-white shadow-lg'
-                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 shadow'
-                  }`}
-                  style={{
-                    backgroundColor: selectedNetwork === network ? networkConfig?.color : undefined,
-                  }}
+        {/* Store Info Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          {/* WhatsApp Contact Card */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-green-200 dark:border-green-800">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center flex-shrink-0">
+                <MessageCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-1">WhatsApp Contact</h3>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Direct message for instant support</p>
+                <a
+                  href={`https://wa.me/${store.whatsappNumber}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-green-600 dark:text-green-400 hover:underline text-sm font-medium"
                 >
-                  <span className="mr-2">{networkConfig?.icon}</span>
-                  {networkConfig?.name || network}
-                </button>
+                  {store.whatsappNumber}
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Community Card */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-1">Join Our Community</h3>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Get exclusive deals & updates</p>
+                <a
+                  href={store.whatsappCommunityLink || `https://wa.me/${store.whatsappNumber}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium"
+                >
+                  Join Now →
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Store Hours Card */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Clock className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-1">Store Hours</h3>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Mon-Fri: 8AM - 10PM<br/>
+                  Sat-Sun: 9AM - 8PM
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Network Selection Cards */}
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Select Network Provider</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Object.keys(groupedProducts).map((networkId) => {
+              const network = networks.find(n => n.id === networkId);
+              const styles = getNetworkStyles(networkId);
+              
+              return (
+                <div
+                  key={networkId}
+                  className={`${styles.cardBg} ${styles.textColor} rounded-lg shadow-md transition-transform duration-300 cursor-pointer hover:translate-y-[-5px] hover:shadow-xl ${
+                    selectedNetwork === networkId ? 'ring-4 ring-blue-500' : ''
+                  }`}
+                  onClick={() => setSelectedNetwork(networkId)}
+                >
+                  <div className="flex flex-col items-center justify-center p-4 space-y-2">
+                    <div className="w-16 h-16 md:w-20 md:h-20 flex justify-center items-center">
+                      {getNetworkLogo(networkId)}
+                    </div>
+                    <h3 className="text-lg font-bold">
+                      {network?.name || networkId}
+                    </h3>
+                  </div>
+                  <div className={`${styles.bottomBg} ${styles.bottomText} p-3 text-center rounded-b-lg`}>
+                    <p className="text-sm font-medium">
+                      {groupedProducts[networkId]?.length || 0} Packages
+                    </p>
+                  </div>
+                </div>
               );
             })}
           </div>
         </div>
 
-        {/* Products Grid */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 mb-8 transition-colors duration-300">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            {networks.find(n => n.id === selectedNetwork)?.name} Data Packages
-          </h3>
-          
-          {/* Products Table - Desktop */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Package</th>
-                  <th className="text-center py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Validity</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Price</th>
-                  <th className="text-right py-3 px-4 text-sm font-medium text-gray-700 dark:text-gray-300">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {groupedProducts[selectedNetwork]?.sort((a, b) => a.capacity - b.capacity).map((product) => (
-                  <tr key={product.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                    <td className="py-4 px-4">
-                      <div className="flex items-center">
-                        <div 
-                          className="w-2 h-8 rounded-full mr-3"
-                          style={{ backgroundColor: networks.find(n => n.id === product.network)?.color }}
-                        />
-                        <div>
-                          <p className="font-semibold text-gray-900 dark:text-white">{product.capacity}GB</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{product.network} Bundle</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <span className="inline-flex items-center px-2 py-1 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded-full">
-                        30 Days
-                      </span>
-                    </td>
-                    <td className="py-4 px-4 text-right">
-                      <div>
-                        <p className="font-bold text-gray-900 dark:text-white text-lg">GH₵ {product.price.toFixed(2)}</p>
-                        <p className="text-xs text-green-600 dark:text-green-400 line-through">GH₵ {(product.price * 1.2).toFixed(2)}</p>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-right">
-                      <button
-                        onClick={() => addToCart(product)}
-                        disabled={!store.operatingStatus?.isOpen}
-                        className={`px-4 py-2 rounded-lg font-medium transition-all transform hover:scale-105 text-sm ${
-                          store.operatingStatus?.isOpen
-                            ? 'bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 hover:from-blue-700 hover:to-blue-800 text-white shadow-md hover:shadow-lg'
-                            : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                        }`}
-                      >
-                        {store.operatingStatus?.isOpen ? (
-                          <>
-                            <ShoppingCart className="w-4 h-4 inline mr-1" />
-                            Add to Cart
-                          </>
-                        ) : (
-                          'Unavailable'
-                        )}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Card View */}
-          <div className="md:hidden space-y-4">
-            {groupedProducts[selectedNetwork]?.sort((a, b) => a.capacity - b.capacity).map((product) => (
-              <div key={product.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex items-center">
+        {/* Selected Network Products */}
+        {selectedNetwork && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              {networks.find(n => n.id === selectedNetwork)?.name} Data Packages
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {groupedProducts[selectedNetwork]?.sort((a, b) => a.capacity - b.capacity).map((bundle, index) => {
+                const styles = getNetworkStyles(selectedNetwork);
+                
+                return (
+                  <div key={index} className="flex flex-col relative">
                     <div 
-                      className="w-2 h-8 rounded-full mr-3"
-                      style={{ backgroundColor: networks.find(n => n.id === product.network)?.color }}
-                    />
-                    <div>
-                      <h4 className="font-semibold text-gray-900 dark:text-white">{product.capacity}GB</h4>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{product.network} • 30 Days</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-gray-900 dark:text-white text-lg">GH₵ {product.price.toFixed(2)}</p>
-                    <p className="text-xs text-green-600 dark:text-green-400 line-through">GH₵ {(product.price * 1.2).toFixed(2)}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => addToCart(product)}
-                  disabled={!store.operatingStatus?.isOpen}
-                  className={`w-full py-2 rounded-lg font-medium transition-colors text-sm ${
-                    store.operatingStatus?.isOpen
-                      ? 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  {store.operatingStatus?.isOpen ? 'Add to Cart' : 'Store Closed'}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Features Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-8 mb-8 transition-colors duration-300">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 text-center">Why Choose {store.storeName}?</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Zap className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-              </div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Instant Delivery</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Get your data bundles activated within seconds</p>
-            </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Shield className="w-8 h-8 text-green-600 dark:text-green-400" />
-              </div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">100% Secure</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Safe and reliable payment processing</p>
-            </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Gift className="w-8 h-8 text-purple-600 dark:text-purple-400" />
-              </div>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Best Prices</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Competitive rates with exclusive discounts</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Shopping Cart Button */}
-      <div className="fixed bottom-4 right-4 z-40">
-        {cart.length > 0 && !showCart && (
-          <button
-            onClick={() => setShowCart(true)}
-            className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-full p-4 shadow-lg flex items-center"
-          >
-            <ShoppingCart className="w-6 h-6" />
-            <span className="ml-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
-              {cart.reduce((total, item) => total + item.quantity, 0)}
-            </span>
-          </button>
-        )}
-      </div>
-
-      {/* Cart Sidebar */}
-      {showCart && (
-        <>
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40"
-            onClick={() => setShowCart(false)}
-          />
-          <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white dark:bg-gray-800 shadow-xl z-50 overflow-y-auto transition-colors duration-300">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Shopping Cart</h2>
-              <button
-                onClick={() => setShowCart(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-              >
-                <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-              </button>
-            </div>
-
-            {cart.length === 0 ? (
-              <div className="p-8 text-center">
-                <ShoppingCart className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400">Your cart is empty</p>
-                <button
-                  onClick={() => setShowCart(false)}
-                  className="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white font-medium rounded-lg"
-                >
-                  Continue Shopping
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="p-4 space-y-4">
-                  {cart.map((item) => (
-                    <div key={item.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h4 className="font-medium text-gray-900 dark:text-white">
-                            {item.network} {item.capacity}GB
-                          </h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">₵{item.price} each</p>
+                      className={`flex flex-col ${styles.cardBg} ${styles.textColor} overflow-hidden shadow-md transition-transform duration-300 cursor-pointer hover:translate-y-[-5px] ${
+                        selectedBundleIndex === index ? 'rounded-t-lg' : 'rounded-lg'
+                      }`}
+                      onClick={() => handleSelectBundle(index, selectedNetwork)}
+                    >
+                      {!store.operatingStatus?.isOpen && (
+                        <div className="absolute top-2 right-2 z-10">
+                          <span className="bg-red-600 text-white text-xs font-bold py-1 px-2 rounded-full shadow-lg">
+                            STORE CLOSED
+                          </span>
                         </div>
+                      )}
+                      
+                      <div className="flex flex-col items-center justify-center p-5 space-y-3">
+                        <div className="w-20 h-20 flex justify-center items-center">
+                          {getNetworkLogo(selectedNetwork)}
+                        </div>
+                        <h3 className="text-xl font-bold">
+                          {bundle.capacity} GB
+                        </h3>
+                      </div>
+                      
+                      <div className={`grid grid-cols-2 ${styles.bottomBg} ${styles.bottomText}`}
+                           style={{ borderRadius: selectedBundleIndex === index ? '0' : '0 0 0.5rem 0.5rem' }}>
+                        <div className="flex flex-col items-center justify-center p-3 text-center border-r border-gray-600">
+                          <p className="text-lg">GH₵ {bundle.price.toFixed(2)}</p>
+                          <p className="text-sm font-bold">Price</p>
+                        </div>
+                        <div className="flex flex-col items-center justify-center p-3 text-center">
+                          <p className="text-lg">30 Days</p>
+                          <p className="text-sm font-bold">Validity</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {selectedBundleIndex === index && (
+                      <div className={`${styles.cardBg} p-4 rounded-b-lg shadow-md`}>
+                        {bundleMessages[index] && (
+                          <div className={`mb-3 p-3 rounded ${
+                            bundleMessages[index].type === 'success' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {bundleMessages[index].text}
+                          </div>
+                        )}
+                        
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium mb-1">
+                            Phone Number
+                          </label>
+                          <input
+                            type="tel"
+                            className="w-full px-4 py-2 rounded bg-white/90 text-gray-900 placeholder-gray-500 border border-gray-300 focus:outline-none focus:border-blue-500"
+                            placeholder="024 123 4567"
+                            value={phoneNumber}
+                            onChange={(e) => setPhoneNumber(formatPhone(e.target.value))}
+                          />
+                        </div>
+                        
                         <button
-                          onClick={() => removeFromCart(item.id)}
-                          className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                          onClick={() => handlePurchase(bundle, index)}
+                          disabled={!store.operatingStatus?.isOpen || purchasing}
+                          className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          {purchasing ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                              Processing...
+                            </>
+                          ) : !store.operatingStatus?.isOpen ? (
+                            'Store Closed'
+                          ) : (
+                            'Purchase Now'
+                          )}
                         </button>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => updateCartQuantity(item.id, -1)}
-                            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
-                          >
-                            <Minus className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                          </button>
-                          <span className="px-3 py-1 bg-white dark:bg-gray-800 rounded font-medium text-gray-900 dark:text-white">
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={() => updateCartQuantity(item.id, 1)}
-                            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
-                          >
-                            <Plus className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                          </button>
-                        </div>
-                        <p className="font-semibold text-gray-900 dark:text-white">
-                          ₵{(item.price * item.quantity).toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-                  <div className="flex justify-between mb-4">
-                    <span className="text-lg font-semibold text-gray-900 dark:text-white">Total:</span>
-                    <span className="text-2xl font-bold text-gray-900 dark:text-white">
-                      ₵{getTotalPrice().toFixed(2)}
-                    </span>
+                    )}
                   </div>
-                  <button
-                    onClick={() => {
-                      setShowCart(false);
-                      setShowCheckout(true);
-                    }}
-                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
-                  >
-                    Proceed to Checkout
-                    <ArrowRight className="w-4 h-4 inline ml-2" />
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* Checkout Modal */}
-      {showCheckout && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={() => setShowCheckout(false)}
-        >
-          <div
-            className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Complete Your Order</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Phone Number *
-                </label>
-                <input
-                  type="tel"
-                  value={customerForm.phoneNumber}
-                  onChange={(e) => setCustomerForm({
-                    ...customerForm,
-                    phoneNumber: formatPhone(e.target.value)
-                  })}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="024 123 4567"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Name (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={customerForm.name}
-                  onChange={(e) => setCustomerForm({
-                    ...customerForm,
-                    name: e.target.value
-                  })}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Your name"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Email (Optional)
-                </label>
-                <input
-                  type="email"
-                  value={customerForm.email}
-                  onChange={(e) => setCustomerForm({
-                    ...customerForm,
-                    email: e.target.value
-                  })}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="your@email.com"
-                />
-              </div>
-
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Order Summary</p>
-                <div className="space-y-1">
-                  {cart.map((item) => (
-                    <div key={item.id} className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
-                      <span>{item.network} {item.capacity}GB x {item.quantity}</span>
-                      <span>₵{(item.price * item.quantity).toFixed(2)}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="border-t border-gray-200 dark:border-gray-600 mt-2 pt-2 flex justify-between font-semibold text-gray-900 dark:text-white">
-                  <span>Total:</span>
-                  <span>₵{getTotalPrice().toFixed(2)}</span>
-                </div>
-              </div>
-
-              {/* Join WhatsApp Group Reminder */}
-              <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg p-3">
-                <p className="text-sm text-green-800 dark:text-green-300">
-                  <MessageCircle className="w-4 h-4 inline mr-1" />
-                  Don't forget to join our WhatsApp group for exclusive deals!
-                </p>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowCheckout(false)}
-                  className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handlePurchase}
-                  disabled={purchasing || !customerForm.phoneNumber}
-                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                >
-                  {purchasing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      Complete Order
-                      <Check className="w-4 h-4 ml-2" />
-                    </>
-                  )}
-                </button>
-              </div>
+                );
+              })}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Closed Store Modal */}
+        {/* Trust Section */}
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 text-center">
+            <Shield className="w-12 h-12 text-green-600 mx-auto mb-3" />
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Secure Payments</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">100% safe transactions</p>
+          </div>
+          
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 text-center">
+            <Zap className="w-12 h-12 text-yellow-600 mx-auto mb-3" />
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Instant Delivery</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Get your data in seconds</p>
+          </div>
+          
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 text-center">
+            <Users className="w-12 h-12 text-blue-600 mx-auto mb-3" />
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">24/7 Support</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Always here to help</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Store Closed Modal */}
       <AnimatePresence>
         {showClosedModal && (
           <motion.div
@@ -789,16 +632,12 @@ export default function PublicAgentStore() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowClosedModal(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full"
             >
-              {/* Header with Icon */}
               <div className="text-center mb-4">
                 <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Clock className="w-10 h-10 text-red-600 dark:text-red-400" />
@@ -807,122 +646,94 @@ export default function PublicAgentStore() {
                   Store is Currently Closed
                 </h2>
                 <p className="text-gray-600 dark:text-gray-300">
-                  We're sorry, but {store?.storeName} is not accepting orders at the moment.
+                  We're not accepting orders right now. Please check back during our operating hours.
                 </p>
               </div>
 
-              {/* Store Hours Info */}
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-4">
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center">
-                  <Clock className="w-4 h-4 mr-2" />
-                  Operating Hours
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Monday - Friday: 8:00 AM - 10:00 PM<br/>
-                  Saturday - Sunday: 9:00 AM - 8:00 PM
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  *Orders are processed during operating hours only
-                </p>
-              </div>
-
-              {/* Alternative Actions */}
-              <div className="space-y-3 mb-4">
-                <div className="flex items-start">
-                  <MessageCircle className="w-5 h-5 text-green-600 dark:text-green-400 mr-3 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      Join Our WhatsApp Group
-                    </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-300">
-                      Get notified when we're back online and receive exclusive deals
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start">
-                  <Phone className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-3 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      Contact Us Directly
-                    </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-300">
-                      Call or WhatsApp: {store?.whatsappNumber}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start">
-                  <Mail className="w-5 h-5 text-purple-600 dark:text-purple-400 mr-3 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      Send Us an Email
-                    </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-300">
-                      {store?.contactEmail || 'support@databundle.com'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3">
+              <div className="space-y-3">
                 <a
-                  href={store?.whatsappGroupLink}
+                  href={`https://wa.me/${store?.whatsappNumber}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white font-medium rounded-lg transition-colors flex items-center justify-center"
+                  className="w-full px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg flex items-center justify-center"
                 >
                   <MessageCircle className="w-4 h-4 mr-2" />
-                  Join Group
+                  Contact Owner on WhatsApp
                 </a>
+
+                {store?.whatsappCommunityLink && (
+                  <a
+                    href={store.whatsappCommunityLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg flex items-center justify-center"
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Join WhatsApp Community
+                  </a>
+                )}
                 
                 <button
                   onClick={() => setShowClosedModal(false)}
-                  className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-lg transition-colors"
+                  className="w-full px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium rounded-lg"
                 >
-                  Browse Products
+                  Browse Products Anyway
                 </button>
               </div>
-
-              {/* Close Button */}
-              <button
-                onClick={() => setShowClosedModal(false)}
-                className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-              </button>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Footer */}
-      <div className="bg-gray-100 dark:bg-gray-900 py-8 mt-12 border-t border-gray-200 dark:border-gray-800 transition-colors duration-300">
-        <div className="max-w-6xl mx-auto px-4 text-center">
-          <p className="text-gray-600 dark:text-gray-400 mb-2">© {new Date().getFullYear()} {store.storeName}. All rights reserved.</p>
-          <p className="text-sm text-gray-500 dark:text-gray-500">
-            Powered by DataBundle Platform • {store.operatingStatus?.isOpen ? 'Open Now' : 'Currently Closed'}
-          </p>
+      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-8 mt-12">
+        <div className="max-w-6xl mx-auto px-4">
+          {/* Contact Information */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="text-center">
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Quick Contact</h4>
+              <a
+                href={`https://wa.me/${store?.whatsappNumber}`}
+                className="text-green-600 hover:text-green-700 dark:text-green-400 flex items-center justify-center gap-2"
+              >
+                <MessageCircle className="w-4 h-4" />
+                {store?.whatsappNumber}
+              </a>
+            </div>
+            
+            <div className="text-center">
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Join Community</h4>
+              <a
+                href={store?.whatsappCommunityLink || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center justify-center gap-2"
+              >
+                <Users className="w-4 h-4" />
+                WhatsApp Group
+              </a>
+            </div>
+            
+            <div className="text-center">
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Store Status</h4>
+              <p className="text-gray-600 dark:text-gray-400">
+                {store?.operatingStatus?.isOpen ? (
+                  <span className="text-green-600 dark:text-green-400">Currently Open</span>
+                ) : (
+                  <span className="text-red-600 dark:text-red-400">Currently Closed</span>
+                )}
+              </p>
+            </div>
+          </div>
+          
+          {/* Copyright */}
+          <div className="text-center pt-4 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-gray-600 dark:text-gray-400">
+              © {new Date().getFullYear()} {store?.storeName}. Powered by DataBundle Platform
+            </p>
+          </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 0.3s ease-out;
-        }
-      `}</style>
     </div>
   );
 }

@@ -593,7 +593,7 @@ const MobileLink = ({ href, label, icon, onClick, highlight }) => (
   >
     {icon}
     {label}
-  </Link>
+  </Link> 
 );
 
 const MenuLink = ({ href, icon, label, onClick }) => (
