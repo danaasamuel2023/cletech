@@ -1,7 +1,7 @@
-// app/purchase/page.js - Updated with Bulk Purchase Modal
+// app/purchase/page.js - Fixed with Suspense Boundary
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { 
   Loader2, Phone, CreditCard, Wallet, ChevronDown,
   AlertCircle, Check, Upload, FileSpreadsheet, X,
@@ -10,7 +10,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 
-export default function DataPurchase() {
+// Main component that uses useSearchParams
+function DataPurchaseContent() {
   const searchParams = useSearchParams();
   const [selectedNetwork, setSelectedNetwork] = useState('');
   const [products, setProducts] = useState([]);
@@ -256,7 +257,7 @@ export default function DataPurchase() {
       }
 
       parsed.push({
-        phoneNumber: cleanedPhone, // Make sure it's already formatted correctly
+        phoneNumber: cleanedPhone,
         capacity: capacity,
         network: selectedNetwork
       });
@@ -298,7 +299,6 @@ export default function DataPurchase() {
     try {
       const token = localStorage.getItem('token');
       
-      // Debug log the data being sent
       console.log('Sending bulk purchase data:', {
         purchases: bulkPurchases,
         network: selectedNetwork,
@@ -318,7 +318,6 @@ export default function DataPurchase() {
         })
       });
 
-      // Log response for debugging
       console.log('Response status:', response.status);
       const text = await response.text();
       console.log('Response text:', text);
@@ -356,7 +355,7 @@ export default function DataPurchase() {
 
   const handleFileUpload = async (file) => {
     const formData = new FormData();
-    formData.append('file', file);  // Make sure field name is 'file'
+    formData.append('file', file);
     formData.append('network', selectedNetwork);
 
     try {
@@ -365,17 +364,14 @@ export default function DataPurchase() {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
-          // Do NOT set Content-Type header - let browser set it with boundary
         },
         body: formData
       });
 
-      // Log response for debugging
       console.log('Response status:', response.status);
       const text = await response.text();
       console.log('Response text:', text);
 
-      // Try to parse as JSON
       let data;
       try {
         data = JSON.parse(text);
@@ -611,6 +607,7 @@ export default function DataPurchase() {
                 className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
               >
+                {/* Modal content remains the same... */}
                 {/* Modal Header */}
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -767,6 +764,7 @@ export default function DataPurchase() {
                   </div>
                 )}
 
+                {/* Rest of the modal content remains the same... */}
                 {/* Parsed Results */}
                 {bulkPurchases.length > 0 && (
                   <div className="mt-6 space-y-4">
@@ -879,5 +877,26 @@ export default function DataPurchase() {
         </AnimatePresence>
       </div>
     </div>
+  );
+}
+
+// Loading fallback component
+function PurchaseLoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+        <p className="text-gray-600 dark:text-gray-400">Loading purchase page...</p>
+      </div>
+    </div>
+  );
+}
+
+// Main export with Suspense boundary
+export default function DataPurchase() {
+  return (
+    <Suspense fallback={<PurchaseLoadingFallback />}>
+      <DataPurchaseContent />
+    </Suspense>
   );
 }
