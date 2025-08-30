@@ -1,17 +1,16 @@
-// app/checkers/page.js - Result Checker Purchase Page
+// app/result-checker/page.js - Result Checker Purchase Page
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { 
   Loader2, Phone, CreditCard, Wallet, ChevronDown,
-  AlertCircle, Check, Upload, FileSpreadsheet, X,
-  Plus, Trash2, Copy, Info, PackagePlus, Download,
-  Calendar, Clock, ShieldCheck, Award, GraduationCap
+  AlertCircle, Check, X, Copy, Info, Calendar, 
+  Clock, ShieldCheck, Award, GraduationCap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 
-export default function CheckerPurchase() {
+function CheckerPurchase() {
   const searchParams = useSearchParams();
   
   // States
@@ -22,8 +21,6 @@ export default function CheckerPurchase() {
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [email, setEmail] = useState('');
-  const [studentName, setStudentName] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState('wallet');
   const [error, setError] = useState('');
@@ -32,17 +29,6 @@ export default function CheckerPurchase() {
   const [checkerPrice, setCheckerPrice] = useState(0);
   const [myCheckers, setMyCheckers] = useState([]);
   const [showMyCheckers, setShowMyCheckers] = useState(false);
-  
-  // Bulk Purchase States
-  const [showBulkModal, setShowBulkModal] = useState(false);
-  const [bulkInputMethod, setBulkInputMethod] = useState('manual');
-  const [bulkManualInput, setBulkManualInput] = useState('');
-  const [bulkPurchases, setBulkPurchases] = useState([]);
-  const [bulkErrors, setBulkErrors] = useState([]);
-  const [bulkTotalCost, setBulkTotalCost] = useState(0);
-  const [bulkProcessing, setBulkProcessing] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
-  const [bulkFile, setBulkFile] = useState(null);
 
   const checkerTypes = [
     { id: 'WASSCE', name: 'WASSCE', icon: GraduationCap, color: '#2563EB' },
@@ -56,10 +42,6 @@ export default function CheckerPurchase() {
   ];
 
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
-
-  const sampleBulkData = `0241234567 John Doe john@example.com 2
-0551234567 Jane Smith jane@example.com 1
-0261234567 Mike Johnson mike@example.com 3`;
 
   useEffect(() => {
     fetchAvailableCheckers();
@@ -197,8 +179,6 @@ export default function CheckerPurchase() {
           year: selectedYear,
           examType: selectedExamType,
           phoneNumber: cleanedPhone.startsWith('0') ? cleanedPhone : `0${cleanedPhone}`,
-          email: email || undefined,
-          name: studentName || undefined,
           gateway: paymentMethod,
           quantity
         })
@@ -214,8 +194,6 @@ export default function CheckerPurchase() {
           // Wallet payment successful
           setSuccess(`Successfully purchased ${quantity} ${selectedType} checker(s)!`);
           setPhoneNumber('');
-          setEmail('');
-          setStudentName('');
           setQuantity(1);
           setUserBalance(prev => prev - totalCost);
           fetchMyCheckers();
@@ -243,121 +221,6 @@ export default function CheckerPurchase() {
   const showCheckerDetails = (checkers) => {
     // You can implement a modal or notification to show the checker details
     console.log('Purchased checkers:', checkers);
-  };
-
-  const parseBulkInput = () => {
-    const lines = bulkManualInput.trim().split('\n');
-    const parsed = [];
-    const errors = [];
-
-    lines.forEach((line, index) => {
-      const trimmed = line.trim();
-      if (!trimmed) return;
-
-      const parts = trimmed.split(/\s+/);
-      if (parts.length < 4) {
-        errors.push({
-          line: index + 1,
-          error: 'Invalid format. Use: phoneNumber name email quantity'
-        });
-        return;
-      }
-
-      const phoneNumber = parts[0];
-      const name = parts.slice(1, -2).join(' ');
-      const email = parts[parts.length - 2];
-      const quantity = parseInt(parts[parts.length - 1]);
-
-      if (!validatePhone(phoneNumber)) {
-        errors.push({
-          line: index + 1,
-          error: `Invalid phone number: ${phoneNumber}`
-        });
-        return;
-      }
-
-      if (!quantity || quantity < 1) {
-        errors.push({
-          line: index + 1,
-          error: `Invalid quantity: ${quantity}`
-        });
-        return;
-      }
-
-      parsed.push({
-        phoneNumber: formatPhone(phoneNumber),
-        name,
-        email,
-        quantity,
-        type: selectedType,
-        year: selectedYear,
-        examType: selectedExamType
-      });
-    });
-
-    setBulkPurchases(parsed);
-    setBulkErrors(errors);
-    calculateBulkCost(parsed);
-  };
-
-  const calculateBulkCost = (purchases) => {
-    const total = purchases.reduce((sum, p) => sum + (checkerPrice * p.quantity), 0);
-    setBulkTotalCost(total);
-  };
-
-  const handleBulkPurchase = async () => {
-    if (bulkPurchases.length === 0) {
-      setError('No valid purchases to process');
-      return;
-    }
-
-    if (bulkTotalCost > userBalance) {
-      setError('Insufficient wallet balance for bulk purchase');
-      return;
-    }
-
-    setBulkProcessing(true);
-    setError('');
-
-    try {
-      const token = localStorage.getItem('token');
-      
-      // Process each purchase
-      for (const purchase of bulkPurchases) {
-        const response = await fetch('https://cletech-server.onrender.com/api/checkers/purchase', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            ...purchase,
-            gateway: 'wallet'
-          })
-        });
-
-        const data = await response.json();
-        if (!data.success) {
-          console.error(`Failed to process purchase for ${purchase.phoneNumber}`);
-        }
-      }
-
-      setSuccess(`Bulk purchase successful! ${bulkPurchases.length} items processed.`);
-      setShowBulkModal(false);
-      setBulkManualInput('');
-      setBulkPurchases([]);
-      fetchUserBalance();
-      fetchMyCheckers();
-      
-      setTimeout(() => {
-        setSuccess('');
-      }, 5000);
-    } catch (error) {
-      console.error('Bulk purchase error:', error);
-      setError('Failed to process bulk purchase. Please try again.');
-    } finally {
-      setBulkProcessing(false);
-    }
   };
 
   const handleUseChecker = async (checkerId, studentPhone) => {
@@ -435,21 +298,12 @@ export default function CheckerPurchase() {
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                   Purchase Checker
                 </h2>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowMyCheckers(!showMyCheckers)}
-                    className="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
-                  >
-                    My Checkers ({myCheckers.length})
-                  </button>
-                  <button
-                    onClick={() => setShowBulkModal(true)}
-                    className="flex items-center px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                  >
-                    <PackagePlus className="w-4 h-4 mr-2" />
-                    Bulk Purchase
-                  </button>
-                </div>
+                <button
+                  onClick={() => setShowMyCheckers(!showMyCheckers)}
+                  className="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
+                >
+                  My Checkers ({myCheckers.length})
+                </button>
               </div>
 
               {/* Checker Type Selection */}
@@ -531,34 +385,6 @@ export default function CheckerPurchase() {
                       onChange={(e) => setPhoneNumber(formatPhone(e.target.value))}
                       placeholder="024 123 4567"
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Student Name
-                    </label>
-                    <input
-                      type="text"
-                      value={studentName}
-                      onChange={(e) => setStudentName(e.target.value)}
-                      placeholder="John Doe"
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="student@example.com"
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
@@ -799,185 +625,15 @@ export default function CheckerPurchase() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Bulk Purchase Modal */}
-        <AnimatePresence>
-          {showBulkModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-              onClick={() => setShowBulkModal(false)}
-            >
-              <motion.div
-                initial={{ scale: 0.95 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.95 }}
-                className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Modal Header */}
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                    Bulk Purchase - {selectedType} {selectedYear}
-                  </h2>
-                  <button
-                    onClick={() => setShowBulkModal(false)}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                {/* Manual Input Section */}
-                <div className="space-y-4">
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                    <div className="flex items-start gap-2">
-                      <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm text-blue-800 dark:text-blue-200">
-                        <p className="font-medium mb-1">Format: phoneNumber name email quantity</p>
-                        <p className="text-xs">Enter each purchase on a new line. Example:</p>
-                        <pre className="text-xs mt-2 bg-white/50 dark:bg-gray-800/50 p-2 rounded">
-{`0241234567 John Doe john@example.com 2
-0551234567 Jane Smith jane@example.com 1`}
-                        </pre>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Bulk Data Entry
-                      </label>
-                      <button
-                        onClick={() => setBulkManualInput(sampleBulkData)}
-                        className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
-                      >
-                        Use Sample Data
-                      </button>
-                    </div>
-                    <textarea
-                      value={bulkManualInput}
-                      onChange={(e) => setBulkManualInput(e.target.value)}
-                      placeholder="0241234567 John Doe john@example.com 2"
-                      rows={10}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                    />
-                    <button
-                      onClick={parseBulkInput}
-                      className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                    >
-                      Parse Input
-                    </button>
-                  </div>
-                </div>
-
-                {/* Parsed Results */}
-                {bulkPurchases.length > 0 && (
-                  <div className="mt-6 space-y-4">
-                    <h3 className="font-medium text-gray-900 dark:text-white">
-                      Valid Purchases ({bulkPurchases.length})
-                    </h3>
-                    <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
-                          <tr>
-                            <th className="px-4 py-2 text-left">Phone</th>
-                            <th className="px-4 py-2 text-left">Name</th>
-                            <th className="px-4 py-2 text-left">Email</th>
-                            <th className="px-4 py-2 text-left">Qty</th>
-                            <th className="px-4 py-2 text-left">Price</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {bulkPurchases.map((purchase, index) => (
-                            <tr key={index} className="border-t border-gray-200 dark:border-gray-700">
-                              <td className="px-4 py-2">{purchase.phoneNumber}</td>
-                              <td className="px-4 py-2">{purchase.name}</td>
-                              <td className="px-4 py-2 text-xs">{purchase.email}</td>
-                              <td className="px-4 py-2">{purchase.quantity}</td>
-                              <td className="px-4 py-2">GH₵ {(checkerPrice * purchase.quantity).toFixed(2)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {/* Errors */}
-                {bulkErrors.length > 0 && (
-                  <div className="mt-4">
-                    <h3 className="font-medium text-red-600 dark:text-red-400 mb-2">
-                      Errors ({bulkErrors.length})
-                    </h3>
-                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                      {bulkErrors.map((error, index) => (
-                        <div key={index} className="text-sm text-red-700 dark:text-red-300">
-                          Line {error.line}: {error.error}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Summary and Actions */}
-                {bulkPurchases.length > 0 && (
-                  <div className="mt-6 space-y-4">
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
-                          Total Cost:
-                        </span>
-                        <span className="text-lg font-semibold text-gray-900 dark:text-white">
-                          GH₵ {bulkTotalCost.toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
-                          Available Balance:
-                        </span>
-                        <span className={`text-lg font-semibold ${
-                          userBalance >= bulkTotalCost
-                            ? 'text-green-600 dark:text-green-400'
-                            : 'text-red-600 dark:text-red-400'
-                        }`}>
-                          GH₵ {userBalance.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <button
-                        onClick={handleBulkPurchase}
-                        disabled={bulkProcessing || bulkPurchases.length === 0 || bulkTotalCost > userBalance}
-                        className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors disabled:cursor-not-allowed flex items-center justify-center"
-                      >
-                        {bulkProcessing ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                            Processing...
-                          </>
-                        ) : (
-                          `Process ${bulkPurchases.length} Purchase${bulkPurchases.length > 1 ? 's' : ''}`
-                        )}
-                      </button>
-                      <button
-                        onClick={() => setShowBulkModal(false)}
-                        className="px-6 py-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CheckerPurchase />
+    </Suspense>
   );
 }
