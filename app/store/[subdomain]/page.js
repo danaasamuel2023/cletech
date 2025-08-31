@@ -1,3 +1,4 @@
+// Secure Public Agent Store Component with Real Payment Integration
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -10,10 +11,11 @@ import {
   Moon, Sun, Trash2, Wallet, CreditCard, Home, Crown, UserPlus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 
 export default function PublicAgentStore() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const subdomain = params.subdomain;
 
   // Dark Mode State
@@ -26,12 +28,17 @@ export default function PublicAgentStore() {
   const [loading, setLoading] = useState(true);
   const [selectedNetwork, setSelectedNetwork] = useState('');
   const [selectedBundleIndex, setSelectedBundleIndex] = useState(null);
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [customerForm, setCustomerForm] = useState({
+    phoneNumber: '',
+    customerName: '',
+    customerEmail: ''
+  });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showClosedModal, setShowClosedModal] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [bundleMessages, setBundleMessages] = useState({});
+  const [verifying, setVerifying] = useState(false);
 
   // Networks Configuration
   const networks = [
@@ -41,7 +48,258 @@ export default function PublicAgentStore() {
     { id: 'YELLO', name: 'Yello', color: '#FFCB05' }
   ];
 
-  // Logo Components
+  // Check for payment verification on mount
+  useEffect(() => {
+    const reference = searchParams.get('reference');
+    const status = searchParams.get('status');
+    const trxref = searchParams.get('trxref');
+    
+    if (reference || trxref) {
+      verifyPayment(reference || trxref);
+    } else if (status === 'cancelled') {
+      setError('Payment was cancelled. Please try again.');
+      // Clear URL params
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+    setDarkMode(savedDarkMode);
+    if (savedDarkMode) {
+      document.documentElement.classList.add('dark');
+    }
+
+    fetchStoreData();
+  }, [subdomain]);
+
+  const fetchStoreData = async () => {
+    setLoading(true);
+    try {
+      const storeResponse = await fetch(`https://cletech-server.onrender.com/api/store/public/${subdomain}`);
+      const storeData = await storeResponse.json();
+
+      if (!storeData.success) {
+        setError('Store not found');
+        setLoading(false);
+        return;
+      }
+
+      setStore(storeData.data);
+
+      if (!storeData.data.operatingStatus?.isOpen) {
+        setShowClosedModal(true);
+      }
+
+      const productsResponse = await fetch(`https://cletech-server.onrender.com/api/store/public/${subdomain}/products`);
+      const productsData = await productsResponse.json();
+
+      if (productsData.success) {
+        setProducts(productsData.data.products);
+        setGroupedProducts(productsData.data.grouped);
+        
+        const availableNetworks = Object.keys(productsData.data.grouped);
+        if (availableNetworks.length > 0) {
+          setSelectedNetwork(availableNetworks[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching store:', error);
+      setError('Failed to load store');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // CRITICAL: Verify payment after redirect from Paystack
+  const verifyPayment = async (reference) => {
+    setVerifying(true);
+    setError('');
+    
+    try {
+      const response = await fetch(`https://cletech-server.onrender.com/api/purchase/verify/${reference}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setSuccess('Payment successful! Your data bundle is being processed.');
+        
+        // Clear stored purchase data
+        localStorage.removeItem('pendingPurchase');
+        
+        // Clear URL params
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Show success for longer
+        setTimeout(() => {
+          setSuccess('');
+        }, 10000);
+      } else {
+        setError(data.message || 'Payment verification failed');
+      }
+    } catch (err) {
+      console.error('Verification error:', err);
+      setError('Failed to verify payment. Please contact support.');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const toggleDarkMode = () => {
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
+    localStorage.setItem('darkMode', newDarkMode.toString());
+    
+    if (newDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
+
+  const formatPhone = (value) => {
+    let cleaned = value.replace(/\D/g, '');
+    
+    if (cleaned.startsWith('233')) {
+      cleaned = cleaned.substring(3);
+    }
+    if (cleaned.startsWith('0')) {
+      cleaned = cleaned.substring(1);
+    }
+    
+    cleaned = cleaned.substring(0, 9);
+    
+    if (cleaned.length > 2 && cleaned.length <= 5) {
+      return `0${cleaned.substring(0, 2)} ${cleaned.substring(2)}`;
+    } else if (cleaned.length > 5) {
+      return `0${cleaned.substring(0, 2)} ${cleaned.substring(2, 5)} ${cleaned.substring(5)}`;
+    }
+    
+    return cleaned ? `0${cleaned}` : '';
+  };
+
+  const handleSelectBundle = (bundleIndex, networkId) => {
+    setSelectedBundleIndex(bundleIndex);
+    setSelectedNetwork(networkId);
+    setCustomerForm({
+      phoneNumber: '',
+      customerName: '',
+      customerEmail: ''
+    });
+    setBundleMessages({});
+  };
+
+  // CRITICAL: Real purchase function that calls backend API
+  const handlePurchase = async (bundle, index) => {
+    setBundleMessages(prev => ({ ...prev, [index]: null }));
+    
+    // Validate phone number
+    const cleanPhone = customerForm.phoneNumber.replace(/\s/g, '');
+    if (!cleanPhone || cleanPhone.length < 10) {
+      setBundleMessages(prev => ({ 
+        ...prev, 
+        [index]: { text: 'Please enter a valid phone number', type: 'error' } 
+      }));
+      return;
+    }
+
+    // Check if store is open
+    if (!store.operatingStatus?.isOpen) {
+      setBundleMessages(prev => ({ 
+        ...prev, 
+        [index]: { text: 'Store is currently closed', type: 'error' } 
+      }));
+      return;
+    }
+
+    setPurchasing(true);
+    setError('');
+
+    try {
+      // CRITICAL: Call the actual backend API
+      const response = await fetch(`https://cletech-server.onrender.com/api/purchase/store/${subdomain}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          phoneNumber: cleanPhone,
+          network: bundle.network,
+          capacity: bundle.capacity,
+          customerName: customerForm.customerName || 'Guest',
+          customerEmail: customerForm.customerEmail || ''
+        })
+      });
+
+      const data = await response.json();
+      console.log('Purchase response:', data);
+
+      if (data.success && data.requiresPayment && data.data.paymentUrl) {
+        // CRITICAL: Store purchase info before redirect
+        localStorage.setItem('pendingPurchase', JSON.stringify({
+          reference: data.data.reference,
+          amount: data.data.amount,
+          network: data.data.network,
+          capacity: data.data.capacity,
+          phoneNumber: data.data.phoneNumber,
+          storeName: data.data.storeName
+        }));
+
+        setBundleMessages(prev => ({ 
+          ...prev, 
+          [index]: { text: 'Redirecting to payment...', type: 'success' } 
+        }));
+        
+        // CRITICAL: Redirect to Paystack payment page
+        setTimeout(() => {
+          window.location.href = data.data.paymentUrl;
+        }, 1500);
+        
+      } else if (data.success && !data.requiresPayment) {
+        // This should not happen - all purchases require payment
+        setBundleMessages(prev => ({ 
+          ...prev, 
+          [index]: { text: 'Payment configuration error. Please contact support.', type: 'error' } 
+        }));
+        console.error('Purchase without payment requirement - this is a bug!');
+      } else {
+        setBundleMessages(prev => ({ 
+          ...prev, 
+          [index]: { text: data.message || 'Purchase failed', type: 'error' } 
+        }));
+      }
+    } catch (err) {
+      console.error('Purchase error:', err);
+      setBundleMessages(prev => ({ 
+        ...prev, 
+        [index]: { text: 'Failed to process purchase. Please try again.', type: 'error' } 
+      }));
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const shareStore = async () => {
+    const shareUrl = `${window.location.origin}/store/${subdomain}`;
+    const shareText = `Check out ${store?.storeName} for the best data bundle prices! 🔥`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: store?.storeName,
+          text: shareText,
+          url: shareUrl
+        });
+      } catch (err) {
+        console.log('Share failed:', err);
+      }
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      setSuccess('Store link copied to clipboard!');
+      setTimeout(() => setSuccess(''), 2000);
+    }
+  };
+
+  // Network Logo Components (keeping existing ones)
   const MTNLogo = () => (
     <svg width="80" height="80" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
       <circle cx="100" cy="100" r="85" fill="#ffcc00" stroke="#000" strokeWidth="2"/>
@@ -124,153 +382,26 @@ export default function PublicAgentStore() {
     }
   };
 
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-    setDarkMode(savedDarkMode);
-    if (savedDarkMode) {
-      document.documentElement.classList.add('dark');
-    }
-
-    fetchStoreData();
-  }, [subdomain]);
-
-  const fetchStoreData = async () => {
-    setLoading(true);
-    try {
-      const storeResponse = await fetch(`https://cletech-server.onrender.com/api/store/public/${subdomain}`);
-      const storeData = await storeResponse.json();
-
-      if (!storeData.success) {
-        setError('Store not found');
-        setLoading(false);
-        return;
-      }
-
-      setStore(storeData.data);
-
-      if (!storeData.data.operatingStatus?.isOpen) {
-        setShowClosedModal(true);
-      }
-
-      const productsResponse = await fetch(`https://cletech-server.onrender.com/api/store/public/${subdomain}/products`);
-      const productsData = await productsResponse.json();
-
-      if (productsData.success) {
-        setProducts(productsData.data.products);
-        setGroupedProducts(productsData.data.grouped);
-        
-        const availableNetworks = Object.keys(productsData.data.grouped);
-        if (availableNetworks.length > 0) {
-          setSelectedNetwork(availableNetworks[0]);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching store:', error);
-      setError('Failed to load store');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const toggleDarkMode = () => {
-    const newDarkMode = !darkMode;
-    setDarkMode(newDarkMode);
-    localStorage.setItem('darkMode', newDarkMode.toString());
-    
-    if (newDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
-
-  const formatPhone = (value) => {
-    let cleaned = value.replace(/\D/g, '');
-    
-    if (cleaned.startsWith('233')) {
-      cleaned = cleaned.substring(3);
-    }
-    if (cleaned.startsWith('0')) {
-      cleaned = cleaned.substring(1);
-    }
-    
-    cleaned = cleaned.substring(0, 9);
-    
-    if (cleaned.length > 2 && cleaned.length <= 5) {
-      return `0${cleaned.substring(0, 2)} ${cleaned.substring(2)}`;
-    } else if (cleaned.length > 5) {
-      return `0${cleaned.substring(0, 2)} ${cleaned.substring(2, 5)} ${cleaned.substring(5)}`;
-    }
-    
-    return cleaned ? `0${cleaned}` : '';
-  };
-
-  const handleSelectBundle = (bundleIndex, networkId) => {
-    setSelectedBundleIndex(bundleIndex);
-    setSelectedNetwork(networkId);
-    setPhoneNumber('');
-    setBundleMessages({});
-  };
-
-  const handlePurchase = async (bundle, index) => {
-    setBundleMessages(prev => ({ ...prev, [index]: null }));
-    
-    if (!phoneNumber || phoneNumber.replace(/\s/g, '').length < 10) {
-      setBundleMessages(prev => ({ 
-        ...prev, 
-        [index]: { text: 'Please enter a valid phone number', type: 'error' } 
-      }));
-      return;
-    }
-
-    if (!store.operatingStatus?.isOpen) {
-      setBundleMessages(prev => ({ 
-        ...prev, 
-        [index]: { text: 'Store is currently closed', type: 'error' } 
-      }));
-      return;
-    }
-
-    setPurchasing(true);
-    setError('');
-
-    setTimeout(() => {
-      setSuccess(`${bundle.capacity}GB bundle purchased successfully for ${phoneNumber}!`);
-      setSelectedBundleIndex(null);
-      setPhoneNumber('');
-      setPurchasing(false);
-      
-      setTimeout(() => setSuccess(''), 3000);
-    }, 2000);
-  };
-
-  const shareStore = async () => {
-    const shareUrl = `${window.location.origin}/store/${subdomain}`;
-    const shareText = `Check out ${store?.storeName} for the best data bundle prices! 🔥`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: store?.storeName,
-          text: shareText,
-          url: shareUrl
-        });
-      } catch (err) {
-        console.log('Share failed:', err);
-      }
-    } else {
-      navigator.clipboard.writeText(shareUrl);
-      setSuccess('Store link copied to clipboard!');
-      setTimeout(() => setSuccess(''), 2000);
-    }
-  };
-
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
           <p className="text-gray-600 dark:text-gray-300">Loading store...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Payment verification overlay
+  if (verifying) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-green-600 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Verifying Payment</h2>
+          <p className="text-gray-600 dark:text-gray-300">Please wait while we confirm your payment...</p>
         </div>
       </div>
     );
@@ -361,14 +492,14 @@ export default function PublicAgentStore() {
         </div>
       </div>
 
-      {/* WhatsApp Contact Strip */}
+      {/* WhatsApp Contact Strip - UPDATED TO USE whatsappGroupLink */}
       <div className="bg-gradient-to-r from-green-600 to-green-700 text-white py-3">
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-6">
               {/* Owner WhatsApp */}
               <a
-                href={`https://wa.me/${store.whatsappNumber}`}
+                href={`https://wa.me/${store.whatsappNumber?.replace(/\D/g, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors"
@@ -377,22 +508,24 @@ export default function PublicAgentStore() {
                 <span className="text-sm font-medium">Owner: {store.whatsappNumber}</span>
               </a>
 
-              {/* WhatsApp Community */}
-              <a
-                href={store.whatsappCommunityLink || `https://wa.me/${store.whatsappNumber}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span className="text-sm font-medium">Join Community</span>
-              </a>
+              {/* WhatsApp Group - USING CORRECT FIELD */}
+              {store.whatsappGroupLink && (
+                <a
+                  href={store.whatsappGroupLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span className="text-sm font-medium">Join WhatsApp Group</span>
+                </a>
+              )}
             </div>
 
             {/* Quick Contact Buttons */}
             <div className="flex items-center gap-2">
               <a
-                href={`https://wa.me/${store.whatsappNumber}?text=Hi, I want to buy data bundles`}
+                href={`https://wa.me/${store.whatsappNumber?.replace(/\D/g, '')}?text=Hi, I want to buy data bundles`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-4 py-1.5 bg-white text-green-700 font-medium rounded-lg hover:bg-gray-100 transition-colors text-sm flex items-center gap-2"
@@ -419,7 +552,7 @@ export default function PublicAgentStore() {
                 <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-1">WhatsApp Contact</h3>
                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Direct message for instant support</p>
                 <a
-                  href={`https://wa.me/${store.whatsappNumber}`}
+                  href={`https://wa.me/${store.whatsappNumber?.replace(/\D/g, '')}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-green-600 dark:text-green-400 hover:underline text-sm font-medium"
@@ -430,7 +563,7 @@ export default function PublicAgentStore() {
             </div>
           </div>
 
-          {/* Community Card */}
+          {/* Community Card - USING CORRECT FIELD */}
           <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -439,14 +572,18 @@ export default function PublicAgentStore() {
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-1">Join Our Community</h3>
                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Get exclusive deals & updates</p>
-                <a
-                  href={store.whatsappCommunityLink || `https://wa.me/${store.whatsappNumber}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium"
-                >
-                  Join Now →
-                </a>
+                {store.whatsappGroupLink ? (
+                  <a
+                    href={store.whatsappGroupLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium"
+                  >
+                    Join Group →
+                  </a>
+                ) : (
+                  <span className="text-sm text-gray-500">No group available</span>
+                )}
               </div>
             </div>
           </div>
@@ -468,42 +605,7 @@ export default function PublicAgentStore() {
           </div>
         </div>
 
-        {/* Network Selection Cards */}
-        <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Select Network Provider</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.keys(groupedProducts).map((networkId) => {
-              const network = networks.find(n => n.id === networkId);
-              const styles = getNetworkStyles(networkId);
-              
-              return (
-                <div
-                  key={networkId}
-                  className={`${styles.cardBg} ${styles.textColor} rounded-lg shadow-md transition-transform duration-300 cursor-pointer hover:translate-y-[-5px] hover:shadow-xl ${
-                    selectedNetwork === networkId ? 'ring-4 ring-blue-500' : ''
-                  }`}
-                  onClick={() => setSelectedNetwork(networkId)}
-                >
-                  <div className="flex flex-col items-center justify-center p-4 space-y-2">
-                    <div className="w-16 h-16 md:w-20 md:h-20 flex justify-center items-center">
-                      {getNetworkLogo(networkId)}
-                    </div>
-                    <h3 className="text-lg font-bold">
-                      {network?.name || networkId}
-                    </h3>
-                  </div>
-                  <div className={`${styles.bottomBg} ${styles.bottomText} p-3 text-center rounded-b-lg`}>
-                    <p className="text-sm font-medium">
-                      {groupedProducts[networkId]?.length || 0} Packages
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Selected Network Products */}
+        {/* Selected Network Products - MAIN PURCHASE SECTION */}
         {selectedNetwork && (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -552,6 +654,7 @@ export default function PublicAgentStore() {
                       </div>
                     </div>
                     
+                    {/* UPDATED PURCHASE FORM */}
                     {selectedBundleIndex === index && (
                       <div className={`${styles.cardBg} p-4 rounded-b-lg shadow-md`}>
                         {bundleMessages[index] && (
@@ -564,23 +667,71 @@ export default function PublicAgentStore() {
                           </div>
                         )}
                         
-                        <div className="mb-4">
-                          <label className="block text-sm font-medium mb-1">
-                            Phone Number
-                          </label>
-                          <input
-                            type="tel"
-                            className="w-full px-4 py-2 rounded bg-white/90 text-gray-900 placeholder-gray-500 border border-gray-300 focus:outline-none focus:border-blue-500"
-                            placeholder="024 123 4567"
-                            value={phoneNumber}
-                            onChange={(e) => setPhoneNumber(formatPhone(e.target.value))}
-                          />
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">
+                              Phone Number *
+                            </label>
+                            <input
+                              type="tel"
+                              className="w-full px-4 py-2 rounded bg-white/90 text-gray-900 placeholder-gray-500 border border-gray-300 focus:outline-none focus:border-blue-500"
+                              placeholder="024 123 4567"
+                              value={customerForm.phoneNumber}
+                              onChange={(e) => setCustomerForm({
+                                ...customerForm,
+                                phoneNumber: formatPhone(e.target.value)
+                              })}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium mb-1">
+                              Your Name (Optional)
+                            </label>
+                            <input
+                              type="text"
+                              className="w-full px-4 py-2 rounded bg-white/90 text-gray-900 placeholder-gray-500 border border-gray-300 focus:outline-none focus:border-blue-500"
+                              placeholder="John Doe"
+                              value={customerForm.customerName}
+                              onChange={(e) => setCustomerForm({
+                                ...customerForm,
+                                customerName: e.target.value
+                              })}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium mb-1">
+                              Email (Optional)
+                            </label>
+                            <input
+                              type="email"
+                              className="w-full px-4 py-2 rounded bg-white/90 text-gray-900 placeholder-gray-500 border border-gray-300 focus:outline-none focus:border-blue-500"
+                              placeholder="john@example.com"
+                              value={customerForm.customerEmail}
+                              onChange={(e) => setCustomerForm({
+                                ...customerForm,
+                                customerEmail: e.target.value
+                              })}
+                            />
+                          </div>
+
+                          {/* Payment Notice */}
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <div className="flex items-start">
+                              <CreditCard className="w-5 h-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
+                              <div className="text-sm text-blue-800">
+                                <p className="font-medium mb-1">Secure Payment Required</p>
+                                <p>You will be redirected to Paystack to complete payment securely.</p>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                         
                         <button
                           onClick={() => handlePurchase(bundle, index)}
                           disabled={!store.operatingStatus?.isOpen || purchasing}
-                          className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                          className="w-full mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
                         >
                           {purchasing ? (
                             <>
@@ -590,7 +741,10 @@ export default function PublicAgentStore() {
                           ) : !store.operatingStatus?.isOpen ? (
                             'Store Closed'
                           ) : (
-                            'Purchase Now'
+                            <>
+                              <CreditCard className="w-4 h-4 mr-2" />
+                              Proceed to Payment
+                            </>
                           )}
                         </button>
                       </div>
@@ -607,7 +761,7 @@ export default function PublicAgentStore() {
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 text-center">
             <Shield className="w-12 h-12 text-green-600 mx-auto mb-3" />
             <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Secure Payments</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">100% safe transactions</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Powered by Paystack</p>
           </div>
           
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 text-center">
@@ -624,7 +778,7 @@ export default function PublicAgentStore() {
         </div>
       </div>
 
-      {/* Store Closed Modal */}
+      {/* Store Closed Modal - UPDATED WITH CORRECT FIELD */}
       <AnimatePresence>
         {showClosedModal && (
           <motion.div
@@ -652,7 +806,7 @@ export default function PublicAgentStore() {
 
               <div className="space-y-3">
                 <a
-                  href={`https://wa.me/${store?.whatsappNumber}`}
+                  href={`https://wa.me/${store?.whatsappNumber?.replace(/\D/g, '')}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg flex items-center justify-center"
@@ -661,15 +815,15 @@ export default function PublicAgentStore() {
                   Contact Owner on WhatsApp
                 </a>
 
-                {store?.whatsappCommunityLink && (
+                {store?.whatsappGroupLink && (
                   <a
-                    href={store.whatsappCommunityLink}
+                    href={store.whatsappGroupLink}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg flex items-center justify-center"
                   >
                     <UserPlus className="w-4 h-4 mr-2" />
-                    Join WhatsApp Community
+                    Join WhatsApp Group
                   </a>
                 )}
                 
@@ -684,56 +838,6 @@ export default function PublicAgentStore() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Footer */}
-      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-8 mt-12">
-        <div className="max-w-6xl mx-auto px-4">
-          {/* Contact Information */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div className="text-center">
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Quick Contact</h4>
-              <a
-                href={`https://wa.me/${store?.whatsappNumber}`}
-                className="text-green-600 hover:text-green-700 dark:text-green-400 flex items-center justify-center gap-2"
-              >
-                <MessageCircle className="w-4 h-4" />
-                {store?.whatsappNumber}
-              </a>
-            </div>
-            
-            <div className="text-center">
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Join Community</h4>
-              <a
-                href={store?.whatsappCommunityLink || '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center justify-center gap-2"
-              >
-                <Users className="w-4 h-4" />
-                WhatsApp Group
-              </a>
-            </div>
-            
-            <div className="text-center">
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Store Status</h4>
-              <p className="text-gray-600 dark:text-gray-400">
-                {store?.operatingStatus?.isOpen ? (
-                  <span className="text-green-600 dark:text-green-400">Currently Open</span>
-                ) : (
-                  <span className="text-red-600 dark:text-red-400">Currently Closed</span>
-                )}
-              </p>
-            </div>
-          </div>
-          
-          {/* Copyright */}
-          <div className="text-center pt-4 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-gray-600 dark:text-gray-400">
-              © {new Date().getFullYear()} {store?.storeName}. Powered by DataBundle Platform
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
