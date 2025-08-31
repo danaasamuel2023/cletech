@@ -1,7 +1,6 @@
-// app/admin/result-checkers/page.js - Result Checkers with Dark Mode
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   CreditCard, Upload, Download, Search, Filter, Eye, 
   Plus, Calendar, DollarSign, Package, AlertCircle,
@@ -18,6 +17,10 @@ export default function ResultCheckersManagement() {
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [selectedChecker, setSelectedChecker] = useState(null);
   const [activeTab, setActiveTab] = useState('inventory');
+  
+  // Separate search input value from filters
+  const [searchInput, setSearchInput] = useState('');
+  const searchDebounceTimer = useRef(null);
   
   const [filters, setFilters] = useState({
     type: '',
@@ -47,10 +50,44 @@ export default function ResultCheckersManagement() {
 
   const [bulkInput, setBulkInput] = useState('');
 
+  // Only trigger API calls when filters change
   useEffect(() => {
     fetchCheckers();
     fetchStats();
-  }, [filters]);
+  }, [filters.type, filters.year, filters.status, filters.search, filters.page]);
+
+  // Handle debounced search with useCallback to prevent re-renders
+  const handleSearchChange = useCallback((value) => {
+    setSearchInput(value);
+    
+    // Clear existing timer
+    if (searchDebounceTimer.current) {
+      clearTimeout(searchDebounceTimer.current);
+    }
+    
+    // Set new timer for debounced search
+    searchDebounceTimer.current = setTimeout(() => {
+      setFilters(prev => ({ ...prev, search: value, page: 1 }));
+    }, 500); // Wait 500ms after user stops typing
+  }, []);
+
+  // Memoized filter change handlers
+  const handleFilterChange = useCallback((key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
+  }, []);
+
+  const handlePageChange = useCallback((newPage) => {
+    setFilters(prev => ({ ...prev, page: newPage }));
+  }, []);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchDebounceTimer.current) {
+        clearTimeout(searchDebounceTimer.current);
+      }
+    };
+  }, []);
 
   const fetchCheckers = async () => {
     setLoading(true);
@@ -66,95 +103,41 @@ export default function ResultCheckersManagement() {
       
       if (response.ok) {
         const data = await response.json();
-        setCheckers(data.data.checkers);
+        setCheckers(data.data.checkers || []);
+      } else {
+        console.error('Failed to fetch checkers');
+        setCheckers([]);
       }
     } catch (error) {
       console.error('Error fetching checkers:', error);
-      // Mock data for demonstration
-      const mockCheckers = [
-        {
-          _id: '1',
-          type: 'WASSCE',
-          year: 2024,
-          examType: 'MAY/JUNE',
-          serialNumber: 'WAS24001234',
-          pin: 'ABC123XYZ456',
-          price: 10,
-          status: 'available',
-          batchInfo: {
-            batchNumber: 'BATCH-1704150000000',
-            batchDate: new Date('2024-01-01'),
-            totalInBatch: 100
-          },
-          addedBy: { name: 'Admin User' },
-          createdAt: new Date('2024-01-01')
-        },
-        {
-          _id: '2',
-          type: 'BECE',
-          year: 2024,
-          examType: 'JUNE',
-          serialNumber: 'BEC24005678',
-          pin: 'DEF456UVW789',
-          price: 8,
-          status: 'sold',
-          soldTo: {
-            user: { name: 'John Doe', email: 'john@example.com' },
-            soldAt: new Date('2024-02-15'),
-            purchasePrice: 8
-          },
-          batchInfo: {
-            batchNumber: 'BATCH-1704150000000',
-            batchDate: new Date('2024-01-01'),
-            totalInBatch: 100
-          },
-          addedBy: { name: 'Admin User' },
-          createdAt: new Date('2024-01-01')
-        },
-        {
-          _id: '3',
-          type: 'WASSCE',
-          year: 2024,
-          examType: 'NOV/DEC',
-          serialNumber: 'WAS24009012',
-          pin: 'GHI789RST012',
-          price: 10,
-          status: 'used',
-          usedBy: {
-            user: { name: 'Jane Smith', email: 'jane@example.com' },
-            usedAt: new Date('2024-03-01')
-          },
-          soldTo: {
-            user: { name: 'Jane Smith', email: 'jane@example.com' },
-            soldAt: new Date('2024-02-20'),
-            purchasePrice: 10
-          },
-          batchInfo: {
-            batchNumber: 'BATCH-1704236400000',
-            batchDate: new Date('2024-01-02'),
-            totalInBatch: 50
-          },
-          addedBy: { name: 'Admin User' },
-          createdAt: new Date('2024-01-02')
-        }
-      ];
-      setCheckers(mockCheckers);
+      setCheckers([]);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchStats = async () => {
-    // Mock stats
-    setStats({
-      total: 1250,
-      available: 850,
-      sold: 300,
-      expired: 50,
-      used: 50,
-      totalValue: 12500,
-      totalRevenue: 3000
-    });
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('https://cletech-server.onrender.com/api/checkers/admin/stats', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data.data || {
+          total: 0,
+          available: 0,
+          sold: 0,
+          expired: 0,
+          used: 0,
+          totalValue: 0,
+          totalRevenue: 0
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
   };
 
   const handleBulkUpload = async () => {
@@ -633,16 +616,21 @@ WAS24001235,DEF456UVW789"
               <input
                 type="text"
                 placeholder="Search by serial number or PIN..."
-                value={filters.search}
-                onChange={(e) => setFilters({...filters, search: e.target.value})}
+                value={searchInput}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 placeholder-gray-400 dark:placeholder-gray-500"
               />
+              {searchInput && filters.search !== searchInput && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <div className="animate-pulse text-gray-400 text-xs">Searching...</div>
+                </div>
+              )}
             </div>
           </div>
 
           <select
             value={filters.type}
-            onChange={(e) => setFilters({...filters, type: e.target.value})}
+            onChange={(e) => handleFilterChange('type', e.target.value)}
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
           >
             <option value="">All Types</option>
@@ -652,7 +640,7 @@ WAS24001235,DEF456UVW789"
 
           <select
             value={filters.year}
-            onChange={(e) => setFilters({...filters, year: e.target.value})}
+            onChange={(e) => handleFilterChange('year', e.target.value)}
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
           >
             <option value="">All Years</option>
@@ -663,7 +651,7 @@ WAS24001235,DEF456UVW789"
 
           <select
             value={filters.status}
-            onChange={(e) => setFilters({...filters, status: e.target.value})}
+            onChange={(e) => handleFilterChange('status', e.target.value)}
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
           >
             <option value="">All Status</option>
@@ -917,14 +905,14 @@ WAS24001235,DEF456UVW789"
         </div>
         <div className="flex space-x-2">
           <button
-            onClick={() => setFilters({...filters, page: Math.max(1, filters.page - 1)})}
+            onClick={() => handlePageChange(Math.max(1, filters.page - 1))}
             disabled={filters.page === 1}
             className="px-3 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Previous
           </button>
           <button
-            onClick={() => setFilters({...filters, page: filters.page + 1})}
+            onClick={() => handlePageChange(filters.page + 1)}
             disabled={filters.page * filters.limit >= stats.total}
             className="px-3 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
