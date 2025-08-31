@@ -1,4 +1,4 @@
-// Secure Public Agent Store Component with Real Payment Integration
+// Secure Public Agent Store Component with Real Payment Integration and Network Selector
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -8,7 +8,8 @@ import {
   CheckCircle, Zap, Gift, TrendingUp, MessageCircle, Share2,
   Facebook, Instagram, Twitter, Copy, ExternalLink, Loader2,
   X, Plus, Minus, AlertCircle, Check, ArrowRight, Sparkles,
-  Moon, Sun, Trash2, Wallet, CreditCard, Home, Crown, UserPlus
+  Moon, Sun, Trash2, Wallet, CreditCard, Home, Crown, UserPlus,
+  Wifi, Signal
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useSearchParams } from 'next/navigation';
@@ -39,14 +40,39 @@ export default function PublicAgentStore() {
   const [purchasing, setPurchasing] = useState(false);
   const [bundleMessages, setBundleMessages] = useState({});
   const [verifying, setVerifying] = useState(false);
+  const [showAllNetworks, setShowAllNetworks] = useState(false);
 
-  // Networks Configuration
-  const networks = [
-    { id: 'MTN', name: 'MTN', color: '#FFCB05' },
-    { id: 'TELECEL', name: 'Telecel', color: '#E30613' },
-    { id: 'AT', name: 'AirtelTigo', color: '#0066CC' },
-    { id: 'YELLO', name: 'Yello', color: '#FFCB05' }
-  ];
+  // Networks Configuration with enhanced colors
+  const networks = {
+    'MTN': { 
+      id: 'MTN', 
+      name: 'MTN', 
+      color: '#FFCB05',
+      gradient: 'from-yellow-400 to-yellow-500',
+      icon: '📱'
+    },
+    'TELECEL': { 
+      id: 'TELECEL', 
+      name: 'Telecel', 
+      color: '#E30613',
+      gradient: 'from-red-600 to-red-700',
+      icon: '📞'
+    },
+    'AT': { 
+      id: 'AT', 
+      name: 'AirtelTigo', 
+      color: '#0066CC',
+      gradient: 'from-blue-600 to-purple-600',
+      icon: '📡'
+    },
+    'YELLO': { 
+      id: 'YELLO', 
+      name: 'Yello', 
+      color: '#FFCB05',
+      gradient: 'from-yellow-500 to-orange-500',
+      icon: '📶'
+    }
+  };
 
   // Check for payment verification on mount
   useEffect(() => {
@@ -58,7 +84,6 @@ export default function PublicAgentStore() {
       verifyPayment(reference || trxref);
     } else if (status === 'cancelled') {
       setError('Payment was cancelled. Please try again.');
-      // Clear URL params
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [searchParams]);
@@ -101,6 +126,10 @@ export default function PublicAgentStore() {
         const availableNetworks = Object.keys(productsData.data.grouped);
         if (availableNetworks.length > 0) {
           setSelectedNetwork(availableNetworks[0]);
+          // If only one network, show all networks view
+          if (availableNetworks.length === 1) {
+            setShowAllNetworks(true);
+          }
         }
       }
     } catch (error) {
@@ -111,7 +140,6 @@ export default function PublicAgentStore() {
     }
   };
 
-  // CRITICAL: Verify payment after redirect from Paystack
   const verifyPayment = async (reference) => {
     setVerifying(true);
     setError('');
@@ -122,14 +150,8 @@ export default function PublicAgentStore() {
       
       if (data.success) {
         setSuccess('Payment successful! Your data bundle is being processed.');
-        
-        // Clear stored purchase data
         localStorage.removeItem('pendingPurchase');
-        
-        // Clear URL params
         window.history.replaceState({}, document.title, window.location.pathname);
-        
-        // Show success for longer
         setTimeout(() => {
           setSuccess('');
         }, 10000);
@@ -178,7 +200,8 @@ export default function PublicAgentStore() {
   };
 
   const handleSelectBundle = (bundleIndex, networkId) => {
-    setSelectedBundleIndex(bundleIndex);
+    const bundleKey = `${networkId}-${bundleIndex}`;
+    setSelectedBundleIndex(bundleKey);
     setSelectedNetwork(networkId);
     setCustomerForm({
       phoneNumber: '',
@@ -188,25 +211,22 @@ export default function PublicAgentStore() {
     setBundleMessages({});
   };
 
-  // CRITICAL: Real purchase function that calls backend API
-  const handlePurchase = async (bundle, index) => {
-    setBundleMessages(prev => ({ ...prev, [index]: null }));
+  const handlePurchase = async (bundle, bundleKey) => {
+    setBundleMessages(prev => ({ ...prev, [bundleKey]: null }));
     
-    // Validate phone number
     const cleanPhone = customerForm.phoneNumber.replace(/\s/g, '');
     if (!cleanPhone || cleanPhone.length < 10) {
       setBundleMessages(prev => ({ 
         ...prev, 
-        [index]: { text: 'Please enter a valid phone number', type: 'error' } 
+        [bundleKey]: { text: 'Please enter a valid phone number', type: 'error' } 
       }));
       return;
     }
 
-    // Check if store is open
     if (!store.operatingStatus?.isOpen) {
       setBundleMessages(prev => ({ 
         ...prev, 
-        [index]: { text: 'Store is currently closed', type: 'error' } 
+        [bundleKey]: { text: 'Store is currently closed', type: 'error' } 
       }));
       return;
     }
@@ -215,7 +235,6 @@ export default function PublicAgentStore() {
     setError('');
 
     try {
-      // CRITICAL: Call the actual backend API
       const response = await fetch(`https://cletech-server.onrender.com/api/purchase/store/${subdomain}`, {
         method: 'POST',
         headers: {
@@ -231,10 +250,8 @@ export default function PublicAgentStore() {
       });
 
       const data = await response.json();
-      console.log('Purchase response:', data);
 
       if (data.success && data.requiresPayment && data.data.paymentUrl) {
-        // CRITICAL: Store purchase info before redirect
         localStorage.setItem('pendingPurchase', JSON.stringify({
           reference: data.data.reference,
           amount: data.data.amount,
@@ -246,32 +263,24 @@ export default function PublicAgentStore() {
 
         setBundleMessages(prev => ({ 
           ...prev, 
-          [index]: { text: 'Redirecting to payment...', type: 'success' } 
+          [bundleKey]: { text: 'Redirecting to payment...', type: 'success' } 
         }));
         
-        // CRITICAL: Redirect to Paystack payment page
         setTimeout(() => {
           window.location.href = data.data.paymentUrl;
         }, 1500);
         
-      } else if (data.success && !data.requiresPayment) {
-        // This should not happen - all purchases require payment
-        setBundleMessages(prev => ({ 
-          ...prev, 
-          [index]: { text: 'Payment configuration error. Please contact support.', type: 'error' } 
-        }));
-        console.error('Purchase without payment requirement - this is a bug!');
       } else {
         setBundleMessages(prev => ({ 
           ...prev, 
-          [index]: { text: data.message || 'Purchase failed', type: 'error' } 
+          [bundleKey]: { text: data.message || 'Purchase failed', type: 'error' } 
         }));
       }
     } catch (err) {
       console.error('Purchase error:', err);
       setBundleMessages(prev => ({ 
         ...prev, 
-        [index]: { text: 'Failed to process purchase. Please try again.', type: 'error' } 
+        [bundleKey]: { text: 'Failed to process purchase. Please try again.', type: 'error' } 
       }));
     } finally {
       setPurchasing(false);
@@ -299,9 +308,9 @@ export default function PublicAgentStore() {
     }
   };
 
-  // Network Logo Components (keeping existing ones)
+  // Network Logo Components
   const MTNLogo = () => (
-    <svg width="80" height="80" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <svg width="60" height="60" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
       <circle cx="100" cy="100" r="85" fill="#ffcc00" stroke="#000" strokeWidth="2"/>
       <path d="M50 80 L80 140 L100 80 L120 140 L150 80" stroke="#000" strokeWidth="12" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
       <text x="100" y="170" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="28">MTN</text>
@@ -309,16 +318,15 @@ export default function PublicAgentStore() {
   );
 
   const TelecelLogo = () => (
-    <svg width="80" height="80" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <svg width="60" height="60" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
       <circle cx="100" cy="100" r="85" fill="#ffffff" stroke="#cc0000" strokeWidth="2"/>
       <text x="100" y="110" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="32" fill="#cc0000">TELECEL</text>
       <path d="M50 125 L150 125" stroke="#cc0000" strokeWidth="5" strokeLinecap="round"/>
-      <text x="100" y="150" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="20" fill="#cc0000">PREMIUM</text>
     </svg>
   );
 
   const AirtelTigoLogo = () => (
-    <svg width="80" height="80" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <svg width="60" height="60" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="atGradient" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style={{ stopColor: '#0066CC', stopOpacity: 1 }} />
@@ -326,13 +334,12 @@ export default function PublicAgentStore() {
         </linearGradient>
       </defs>
       <circle cx="100" cy="100" r="85" fill="url(#atGradient)" stroke="#1e40af" strokeWidth="3"/>
-      <text x="100" y="110" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="55" fill="white">AT</text>
-      <text x="100" y="140" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="20" fill="white">AirtelTigo</text>
+      <text x="100" y="115" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="55" fill="white">AT</text>
     </svg>
   );
 
   const YelloLogo = () => (
-    <svg width="80" height="80" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <svg width="60" height="60" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
       <circle cx="100" cy="100" r="85" fill="#ffcc00" stroke="#000" strokeWidth="2"/>
       <text x="100" y="120" textAnchor="middle" fontFamily="Arial" fontWeight="bold" fontSize="40" fill="#000">YELLO</text>
     </svg>
@@ -419,6 +426,8 @@ export default function PublicAgentStore() {
     );
   }
 
+  const availableNetworks = Object.keys(groupedProducts);
+
   return (
     <div className={`min-h-screen ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
       {/* Dark Mode Toggle */}
@@ -492,12 +501,11 @@ export default function PublicAgentStore() {
         </div>
       </div>
 
-      {/* WhatsApp Contact Strip - UPDATED TO USE whatsappGroupLink */}
+      {/* WhatsApp Contact Strip */}
       <div className="bg-gradient-to-r from-green-600 to-green-700 text-white py-3">
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-6">
-              {/* Owner WhatsApp */}
               <a
                 href={`https://wa.me/${store.whatsappNumber?.replace(/\D/g, '')}`}
                 target="_blank"
@@ -508,7 +516,6 @@ export default function PublicAgentStore() {
                 <span className="text-sm font-medium">Owner: {store.whatsappNumber}</span>
               </a>
 
-              {/* WhatsApp Group - USING CORRECT FIELD */}
               {store.whatsappGroupLink && (
                 <a
                   href={store.whatsappGroupLink}
@@ -522,7 +529,6 @@ export default function PublicAgentStore() {
               )}
             </div>
 
-            {/* Quick Contact Buttons */}
             <div className="flex items-center gap-2">
               <a
                 href={`https://wa.me/${store.whatsappNumber?.replace(/\D/g, '')}?text=Hi, I want to buy data bundles`}
@@ -542,7 +548,6 @@ export default function PublicAgentStore() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Store Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {/* WhatsApp Contact Card */}
           <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-green-200 dark:border-green-800">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -563,7 +568,6 @@ export default function PublicAgentStore() {
             </div>
           </div>
 
-          {/* Community Card - USING CORRECT FIELD */}
           <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -588,7 +592,6 @@ export default function PublicAgentStore() {
             </div>
           </div>
 
-          {/* Store Hours Card */}
           <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -605,155 +608,411 @@ export default function PublicAgentStore() {
           </div>
         </div>
 
-        {/* Selected Network Products - MAIN PURCHASE SECTION */}
-        {selectedNetwork && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              {networks.find(n => n.id === selectedNetwork)?.name} Data Packages
-            </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {groupedProducts[selectedNetwork]?.sort((a, b) => a.capacity - b.capacity).map((bundle, index) => {
-                const styles = getNetworkStyles(selectedNetwork);
-                
-                return (
-                  <div key={index} className="flex flex-col relative">
-                    <div 
-                      className={`flex flex-col ${styles.cardBg} ${styles.textColor} overflow-hidden shadow-md transition-transform duration-300 cursor-pointer hover:translate-y-[-5px] ${
-                        selectedBundleIndex === index ? 'rounded-t-lg' : 'rounded-lg'
+        {/* Network Selector - NEW ENHANCED UI */}
+        {availableNetworks.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                Available Networks
+              </h2>
+              <div className="flex items-center gap-2">
+                <Wifi className="w-5 h-5 text-gray-500" />
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  {availableNetworks.length} network{availableNetworks.length > 1 ? 's' : ''} available
+                </span>
+              </div>
+            </div>
+
+            {/* Network Tabs */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="flex flex-wrap gap-3">
+                {/* Show All Option (only if multiple networks) */}
+                {availableNetworks.length > 1 && (
+                  <button
+                    onClick={() => setShowAllNetworks(!showAllNetworks)}
+                    className={`px-4 py-3 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                      showAllNetworks
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg scale-105'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    <Signal className="w-4 h-4" />
+                    <span>Show All Networks</span>
+                  </button>
+                )}
+
+                {/* Individual Network Buttons */}
+                {availableNetworks.map((networkId) => {
+                  const network = networks[networkId] || { name: networkId, gradient: 'from-gray-500 to-gray-600' };
+                  const productCount = groupedProducts[networkId]?.length || 0;
+                  
+                  return (
+                    <button
+                      key={networkId}
+                      onClick={() => {
+                        setSelectedNetwork(networkId);
+                        setShowAllNetworks(false);
+                      }}
+                      className={`px-4 py-3 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                        !showAllNetworks && selectedNetwork === networkId
+                          ? `bg-gradient-to-r ${network.gradient} text-white shadow-lg scale-105`
+                          : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-blue-500 hover:shadow-md'
                       }`}
-                      onClick={() => handleSelectBundle(index, selectedNetwork)}
+                      disabled={showAllNetworks}
                     >
-                      {!store.operatingStatus?.isOpen && (
-                        <div className="absolute top-2 right-2 z-10">
-                          <span className="bg-red-600 text-white text-xs font-bold py-1 px-2 rounded-full shadow-lg">
-                            STORE CLOSED
-                          </span>
-                        </div>
-                      )}
-                      
-                      <div className="flex flex-col items-center justify-center p-5 space-y-3">
-                        <div className="w-20 h-20 flex justify-center items-center">
-                          {getNetworkLogo(selectedNetwork)}
-                        </div>
-                        <h3 className="text-xl font-bold">
-                          {bundle.capacity} GB
-                        </h3>
-                      </div>
-                      
-                      <div className={`grid grid-cols-2 ${styles.bottomBg} ${styles.bottomText}`}
-                           style={{ borderRadius: selectedBundleIndex === index ? '0' : '0 0 0.5rem 0.5rem' }}>
-                        <div className="flex flex-col items-center justify-center p-3 text-center border-r border-gray-600">
-                          <p className="text-lg">GH₵ {bundle.price.toFixed(2)}</p>
-                          <p className="text-sm font-bold">Price</p>
-                        </div>
-                        <div className="flex flex-col items-center justify-center p-3 text-center">
-                          <p className="text-lg">30 Days</p>
-                          <p className="text-sm font-bold">Validity</p>
-                        </div>
-                      </div>
-                    </div>
+                      <span className="text-lg">{network.icon}</span>
+                      <span>{network.name}</span>
+                      <span className={`px-2 py-0.5 text-xs rounded-full ${
+                        !showAllNetworks && selectedNetwork === networkId
+                          ? 'bg-white/20 text-white'
+                          : 'bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-400'
+                      }`}>
+                        {productCount} {productCount === 1 ? 'package' : 'packages'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Helper Text */}
+              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <p className="text-sm text-blue-800 dark:text-blue-300 flex items-start">
+                  <Sparkles className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                  {showAllNetworks 
+                    ? "Viewing all networks. Click on a specific network to filter packages."
+                    : `Showing ${networks[selectedNetwork]?.name || selectedNetwork} packages. Click "Show All Networks" to view everything.`}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Products Display */}
+        {showAllNetworks ? (
+          // Show All Networks View
+          availableNetworks.map((networkId) => {
+            const networkProducts = groupedProducts[networkId];
+            const network = networks[networkId] || { name: networkId };
+            
+            if (!networkProducts || networkProducts.length === 0) return null;
+            
+            return (
+              <div key={networkId} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{network.icon}</span>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {network.name} Data Packages
+                    </h3>
+                  </div>
+                  <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-sm">
+                    {networkProducts.length} packages
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {networkProducts.sort((a, b) => a.capacity - b.capacity).map((bundle, index) => {
+                    const styles = getNetworkStyles(networkId);
+                    const bundleKey = `${networkId}-${index}`;
                     
-                    {/* UPDATED PURCHASE FORM */}
-                    {selectedBundleIndex === index && (
-                      <div className={`${styles.cardBg} p-4 rounded-b-lg shadow-md`}>
-                        {bundleMessages[index] && (
-                          <div className={`mb-3 p-3 rounded ${
-                            bundleMessages[index].type === 'success' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {bundleMessages[index].text}
+                    return (
+                      <div key={bundleKey} className="flex flex-col relative">
+                        <div 
+                          className={`flex flex-col ${styles.cardBg} ${styles.textColor} overflow-hidden shadow-md transition-transform duration-300 cursor-pointer hover:translate-y-[-5px] ${
+                            selectedBundleIndex === bundleKey ? 'rounded-t-lg' : 'rounded-lg'
+                          }`}
+                          onClick={() => handleSelectBundle(index, networkId)}
+                        >
+                          {!store.operatingStatus?.isOpen && (
+                            <div className="absolute top-2 right-2 z-10">
+                              <span className="bg-red-600 text-white text-xs font-bold py-1 px-2 rounded-full shadow-lg">
+                                STORE CLOSED
+                              </span>
+                            </div>
+                          )}
+                          
+                          <div className="flex flex-col items-center justify-center p-5 space-y-3">
+                            <div className="w-16 h-16 flex justify-center items-center">
+                              {getNetworkLogo(networkId)}
+                            </div>
+                            <h3 className="text-xl font-bold">
+                              {bundle.capacity} GB
+                            </h3>
                           </div>
-                        )}
-                        
-                        <div className="space-y-3">
-                          <div>
-                            <label className="block text-sm font-medium mb-1">
-                              Phone Number *
-                            </label>
-                            <input
-                              type="tel"
-                              className="w-full px-4 py-2 rounded bg-white/90 text-gray-900 placeholder-gray-500 border border-gray-300 focus:outline-none focus:border-blue-500"
-                              placeholder="024 123 4567"
-                              value={customerForm.phoneNumber}
-                              onChange={(e) => setCustomerForm({
-                                ...customerForm,
-                                phoneNumber: formatPhone(e.target.value)
-                              })}
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium mb-1">
-                              Your Name (Optional)
-                            </label>
-                            <input
-                              type="text"
-                              className="w-full px-4 py-2 rounded bg-white/90 text-gray-900 placeholder-gray-500 border border-gray-300 focus:outline-none focus:border-blue-500"
-                              placeholder="John Doe"
-                              value={customerForm.customerName}
-                              onChange={(e) => setCustomerForm({
-                                ...customerForm,
-                                customerName: e.target.value
-                              })}
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium mb-1">
-                              Email (Optional)
-                            </label>
-                            <input
-                              type="email"
-                              className="w-full px-4 py-2 rounded bg-white/90 text-gray-900 placeholder-gray-500 border border-gray-300 focus:outline-none focus:border-blue-500"
-                              placeholder="john@example.com"
-                              value={customerForm.customerEmail}
-                              onChange={(e) => setCustomerForm({
-                                ...customerForm,
-                                customerEmail: e.target.value
-                              })}
-                            />
-                          </div>
-
-                          {/* Payment Notice */}
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                            <div className="flex items-start">
-                              <CreditCard className="w-5 h-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
-                              <div className="text-sm text-blue-800">
-                                <p className="font-medium mb-1">Secure Payment Required</p>
-                                <p>You will be redirected to Paystack to complete payment securely.</p>
-                              </div>
+                          
+                          <div className={`grid grid-cols-2 ${styles.bottomBg} ${styles.bottomText}`}
+                               style={{ borderRadius: selectedBundleIndex === bundleKey ? '0' : '0 0 0.5rem 0.5rem' }}>
+                            <div className="flex flex-col items-center justify-center p-3 text-center border-r border-gray-600">
+                              <p className="text-lg">GH₵ {bundle.price.toFixed(2)}</p>
+                              <p className="text-sm font-bold">Price</p>
+                            </div>
+                            <div className="flex flex-col items-center justify-center p-3 text-center">
+                              <p className="text-lg">30 Days</p>
+                              <p className="text-sm font-bold">Validity</p>
                             </div>
                           </div>
                         </div>
                         
-                        <button
-                          onClick={() => handlePurchase(bundle, index)}
-                          disabled={!store.operatingStatus?.isOpen || purchasing}
-                          className="w-full mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-                        >
-                          {purchasing ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                              Processing...
-                            </>
-                          ) : !store.operatingStatus?.isOpen ? (
-                            'Store Closed'
-                          ) : (
-                            <>
-                              <CreditCard className="w-4 h-4 mr-2" />
-                              Proceed to Payment
-                            </>
-                          )}
-                        </button>
+                        {/* Purchase Form */}
+                        {selectedBundleIndex === bundleKey && (
+                          <div className={`${styles.cardBg} p-4 rounded-b-lg shadow-md`}>
+                            {bundleMessages[bundleKey] && (
+                              <div className={`mb-3 p-3 rounded ${
+                                bundleMessages[bundleKey].type === 'success' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {bundleMessages[bundleKey].text}
+                              </div>
+                            )}
+                            
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-sm font-medium mb-1">
+                                  Phone Number *
+                                </label>
+                                <input
+                                  type="tel"
+                                  className="w-full px-4 py-2 rounded bg-white/90 text-gray-900 placeholder-gray-500 border border-gray-300 focus:outline-none focus:border-blue-500"
+                                  placeholder="024 123 4567"
+                                  value={customerForm.phoneNumber}
+                                  onChange={(e) => setCustomerForm({
+                                    ...customerForm,
+                                    phoneNumber: formatPhone(e.target.value)
+                                  })}
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium mb-1">
+                                  Your Name (Optional)
+                                </label>
+                                <input
+                                  type="text"
+                                  className="w-full px-4 py-2 rounded bg-white/90 text-gray-900 placeholder-gray-500 border border-gray-300 focus:outline-none focus:border-blue-500"
+                                  placeholder="John Doe"
+                                  value={customerForm.customerName}
+                                  onChange={(e) => setCustomerForm({
+                                    ...customerForm,
+                                    customerName: e.target.value
+                                  })}
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium mb-1">
+                                  Email (Optional)
+                                </label>
+                                <input
+                                  type="email"
+                                  className="w-full px-4 py-2 rounded bg-white/90 text-gray-900 placeholder-gray-500 border border-gray-300 focus:outline-none focus:border-blue-500"
+                                  placeholder="john@example.com"
+                                  value={customerForm.customerEmail}
+                                  onChange={(e) => setCustomerForm({
+                                    ...customerForm,
+                                    customerEmail: e.target.value
+                                  })}
+                                />
+                              </div>
+
+                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                <div className="flex items-start">
+                                  <CreditCard className="w-5 h-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
+                                  <div className="text-sm text-blue-800">
+                                    <p className="font-medium mb-1">Secure Payment Required</p>
+                                    <p>You will be redirected to Paystack to complete payment securely.</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <button
+                              onClick={() => handlePurchase(bundle, bundleKey)}
+                              disabled={!store.operatingStatus?.isOpen || purchasing}
+                              className="w-full mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                            >
+                              {purchasing ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                  Processing...
+                                </>
+                              ) : !store.operatingStatus?.isOpen ? (
+                                'Store Closed'
+                              ) : (
+                                <>
+                                  <CreditCard className="w-4 h-4 mr-2" />
+                                  Proceed to Payment
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          // Single Network View
+          selectedNetwork && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{networks[selectedNetwork]?.icon}</span>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {networks[selectedNetwork]?.name || selectedNetwork} Data Packages
+                  </h3>
+                </div>
+                <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-sm">
+                  {groupedProducts[selectedNetwork]?.length || 0} packages
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {groupedProducts[selectedNetwork]?.sort((a, b) => a.capacity - b.capacity).map((bundle, index) => {
+                  const styles = getNetworkStyles(selectedNetwork);
+                  const bundleKey = `${selectedNetwork}-${index}`;
+                  
+                  return (
+                    <div key={bundleKey} className="flex flex-col relative">
+                      <div 
+                        className={`flex flex-col ${styles.cardBg} ${styles.textColor} overflow-hidden shadow-md transition-transform duration-300 cursor-pointer hover:translate-y-[-5px] ${
+                          selectedBundleIndex === bundleKey ? 'rounded-t-lg' : 'rounded-lg'
+                        }`}
+                        onClick={() => handleSelectBundle(index, selectedNetwork)}
+                      >
+                        {!store.operatingStatus?.isOpen && (
+                          <div className="absolute top-2 right-2 z-10">
+                            <span className="bg-red-600 text-white text-xs font-bold py-1 px-2 rounded-full shadow-lg">
+                              STORE CLOSED
+                            </span>
+                          </div>
+                        )}
+                        
+                        <div className="flex flex-col items-center justify-center p-5 space-y-3">
+                          <div className="w-20 h-20 flex justify-center items-center">
+                            {getNetworkLogo(selectedNetwork)}
+                          </div>
+                          <h3 className="text-xl font-bold">
+                            {bundle.capacity} GB
+                          </h3>
+                        </div>
+                        
+                        <div className={`grid grid-cols-2 ${styles.bottomBg} ${styles.bottomText}`}
+                             style={{ borderRadius: selectedBundleIndex === bundleKey ? '0' : '0 0 0.5rem 0.5rem' }}>
+                          <div className="flex flex-col items-center justify-center p-3 text-center border-r border-gray-600">
+                            <p className="text-lg">GH₵ {bundle.price.toFixed(2)}</p>
+                            <p className="text-sm font-bold">Price</p>
+                          </div>
+                          <div className="flex flex-col items-center justify-center p-3 text-center">
+                            <p className="text-lg">30 Days</p>
+                            <p className="text-sm font-bold">Validity</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Purchase Form */}
+                      {selectedBundleIndex === bundleKey && (
+                        <div className={`${styles.cardBg} p-4 rounded-b-lg shadow-md`}>
+                          {bundleMessages[bundleKey] && (
+                            <div className={`mb-3 p-3 rounded ${
+                              bundleMessages[bundleKey].type === 'success' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {bundleMessages[bundleKey].text}
+                            </div>
+                          )}
+                          
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Phone Number *
+                              </label>
+                              <input
+                                type="tel"
+                                className="w-full px-4 py-2 rounded bg-white/90 text-gray-900 placeholder-gray-500 border border-gray-300 focus:outline-none focus:border-blue-500"
+                                placeholder="024 123 4567"
+                                value={customerForm.phoneNumber}
+                                onChange={(e) => setCustomerForm({
+                                  ...customerForm,
+                                  phoneNumber: formatPhone(e.target.value)
+                                })}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Your Name (Optional)
+                              </label>
+                              <input
+                                type="text"
+                                className="w-full px-4 py-2 rounded bg-white/90 text-gray-900 placeholder-gray-500 border border-gray-300 focus:outline-none focus:border-blue-500"
+                                placeholder="John Doe"
+                                value={customerForm.customerName}
+                                onChange={(e) => setCustomerForm({
+                                  ...customerForm,
+                                  customerName: e.target.value
+                                })}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium mb-1">
+                                Email (Optional)
+                              </label>
+                              <input
+                                type="email"
+                                className="w-full px-4 py-2 rounded bg-white/90 text-gray-900 placeholder-gray-500 border border-gray-300 focus:outline-none focus:border-blue-500"
+                                placeholder="john@example.com"
+                                value={customerForm.customerEmail}
+                                onChange={(e) => setCustomerForm({
+                                  ...customerForm,
+                                  customerEmail: e.target.value
+                                })}
+                              />
+                            </div>
+
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                              <div className="flex items-start">
+                                <CreditCard className="w-5 h-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
+                                <div className="text-sm text-blue-800">
+                                  <p className="font-medium mb-1">Secure Payment Required</p>
+                                  <p>You will be redirected to Paystack to complete payment securely.</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <button
+                            onClick={() => handlePurchase(bundle, bundleKey)}
+                            disabled={!store.operatingStatus?.isOpen || purchasing}
+                            className="w-full mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                          >
+                            {purchasing ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                Processing...
+                              </>
+                            ) : !store.operatingStatus?.isOpen ? (
+                              'Store Closed'
+                            ) : (
+                              <>
+                                <CreditCard className="w-4 h-4 mr-2" />
+                                Proceed to Payment
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )
         )}
 
         {/* Trust Section */}
@@ -778,7 +1037,7 @@ export default function PublicAgentStore() {
         </div>
       </div>
 
-      {/* Store Closed Modal - UPDATED WITH CORRECT FIELD */}
+      {/* Store Closed Modal */}
       <AnimatePresence>
         {showClosedModal && (
           <motion.div
