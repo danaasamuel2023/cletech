@@ -66,7 +66,7 @@ const PaymentCallbackInner = () => {
         return;
       }
       
-      const response = await fetch(`https://cletech-server.onrender.com/api/verify/${reference}`, {
+      const response = await fetch(`https://cletech-server.onrender.com/api/deposits/verify/${reference}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
