@@ -1,4 +1,4 @@
-// app/dashboard/store/page.js - Complete Agent Store Management
+// app/dashboard/store/page.js - Complete Agent Store Management (Fixed)
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -80,7 +80,8 @@ export default function AgentStoreManagement() {
     month: { sales: 0, revenue: 0, profit: 0 },
     topProducts: [],
     customerMetrics: { total: 0, new: 0, repeat: 0, repeatRate: 0 },
-    salesChart: []
+    salesChart: [],
+    summary: { totalSales: 0, totalRevenue: 0, totalProfit: 0 }
   });
 
   // Profit Data
@@ -125,6 +126,23 @@ export default function AgentStoreManagement() {
     }
   }, [error]);
 
+  useEffect(() => {
+    fetchStoreData();
+  }, []);
+
+  // Fixed: Moved these useEffect hooks to the main component body
+  useEffect(() => {
+    if (activeTab === 'analytics') {
+      fetchAnalytics();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'profits') {
+      fetchProfits();
+    }
+  }, [activeTab]);
+
   // Copy to clipboard function
   const copyToClipboard = async (text, message = 'Copied to clipboard!') => {
     try {
@@ -136,10 +154,6 @@ export default function AgentStoreManagement() {
       setTimeout(() => setError(''), 2000);
     }
   };
-
-  useEffect(() => {
-    fetchStoreData();
-  }, []);
 
   // API Functions
   const fetchStoreData = async () => {
@@ -1391,12 +1405,7 @@ export default function AgentStoreManagement() {
   );
 
   const renderAnalytics = () => {
-    useEffect(() => {
-      if (activeTab === 'analytics') {
-        fetchAnalytics();
-      }
-    }, [activeTab]);
-
+    // Removed useEffect from here - it's now in the main component body
     return (
       <div className="space-y-6">
         {/* Period Selector */}
@@ -1524,12 +1533,7 @@ export default function AgentStoreManagement() {
   };
 
   const renderProfits = () => {
-    useEffect(() => {
-      if (activeTab === 'profits') {
-        fetchProfits();
-      }
-    }, [activeTab]);
-
+    // Removed useEffect from here - it's now in the main component body
     return (
       <div className="space-y-6">
         {/* Profit Summary */}
