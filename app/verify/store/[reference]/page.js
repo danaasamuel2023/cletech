@@ -7,15 +7,18 @@ import {
   ArrowLeft, MessageCircle, ShoppingBag, RefreshCw,
   Home, Receipt, Phone, Clock
 } from 'lucide-react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 export default function PaymentVerification() {
   const params = useParams();
   const router = useRouter();
-  const reference = params.reference;
+  const searchParams = useSearchParams();
   
-  const [status, setStatus] = useState('verifying'); // verifying, success, failed, error
+  const reference = params.reference;
+  const subdomain = searchParams.get('subdomain'); // Get subdomain from query params
+  
+  const [status, setStatus] = useState('verifying');
   const [purchaseData, setPurchaseData] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [countdown, setCountdown] = useState(10);
@@ -37,32 +40,60 @@ export default function PaymentVerification() {
       }, 1000);
       return () => clearTimeout(timer);
     } else if (status === 'success' && countdown === 0) {
-      // Get store subdomain from localStorage or URL
-      const pendingPurchase = localStorage.getItem('pendingPurchase');
-      if (pendingPurchase) {
-        const data = JSON.parse(pendingPurchase);
-        const subdomain = data.subdomain;
-        router.push(`/store/${subdomain}`);
+      // Redirect to appropriate store
+      const storeSubdomain = subdomain || purchaseData?.subdomain || extractSubdomainFromData();
+      if (storeSubdomain) {
+        router.push(`/store/${storeSubdomain}`);
       } else {
-        // Try to extract subdomain from reference (STORE-xxx pattern)
-        const subdomain = extractSubdomainFromReference(reference);
-        router.push(`/store/${subdomain}`);
+        router.push('/');
       }
     }
-  }, [status, countdown, router]);
+  }, [status, countdown, router, subdomain]);
+
+  const extractSubdomainFromData = () => {
+    // Try to get subdomain from stored data
+    const pendingPurchase = localStorage.getItem('pendingPurchase');
+    if (pendingPurchase) {
+      try {
+        const data = JSON.parse(pendingPurchase);
+        return data.subdomain;
+      } catch (e) {
+        console.error('Error parsing pending purchase:', e);
+      }
+    }
+    return null;
+  };
 
   const verifyPayment = async () => {
     try {
       setStatus('verifying');
       
-      // Retrieve stored purchase data
+      // Retrieve and merge stored purchase data
       const storedData = localStorage.getItem('pendingPurchase');
       if (storedData) {
-        setPurchaseData(JSON.parse(storedData));
+        try {
+          const parsed = JSON.parse(storedData);
+          setPurchaseData(parsed);
+        } catch (e) {
+          console.error('Error parsing stored data:', e);
+        }
       }
 
+      // Add delay to ensure webhook has processed (optional)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
       // Call backend to verify payment
-      const response = await fetch(`https://cletech-server.onrender.com/api/purchase/verify/${reference}`);
+      const response = await fetch(`https://cletech-server.onrender.com/api/purchase/verify/${reference}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          // Add auth token if available
+          ...(localStorage.getItem('token') && {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          })
+        }
+      });
+
       const data = await response.json();
 
       if (data.success) {
@@ -71,7 +102,8 @@ export default function PaymentVerification() {
         // Update purchase data with verification response
         setPurchaseData(prev => ({
           ...prev,
-          ...data.data
+          ...data.data,
+          subdomain: subdomain || prev?.subdomain // Preserve subdomain
         }));
         
         // Clear stored data
@@ -85,6 +117,47 @@ export default function PaymentVerification() {
       }
     } catch (error) {
       console.error('Verification error:', error);
+      
+      // Retry once after delay (webhook might not have processed yet)
+      if (status === 'verifying') {
+        setTimeout(() => {
+          verifyPaymentRetry();
+        }, 3000);
+      } else {
+        setStatus('error');
+        setErrorMessage('Unable to verify payment. Please contact support.');
+      }
+    }
+  };
+
+  const verifyPaymentRetry = async () => {
+    try {
+      const response = await fetch(`https://cletech-server.onrender.com/api/purchase/verify/${reference}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('token') && {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          })
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setStatus('success');
+        setPurchaseData(prev => ({
+          ...prev,
+          ...data.data,
+          subdomain: subdomain || prev?.subdomain
+        }));
+        localStorage.removeItem('pendingPurchase');
+        setCountdown(10);
+      } else {
+        setStatus('failed');
+        setErrorMessage(data.message || 'Payment verification failed');
+      }
+    } catch (error) {
       setStatus('error');
       setErrorMessage('Unable to verify payment. Please contact support.');
     }
@@ -209,7 +282,7 @@ export default function PaymentVerification() {
           {/* Action Buttons */}
           <div className="space-y-3">
             <Link 
-              href={`/store/${purchaseData?.subdomain || 'store'}`}
+              href={`/store/${subdomain || purchaseData?.subdomain || 'home'}`}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
             >
               <ShoppingBag className="w-5 h-5 mr-2" />
@@ -284,7 +357,7 @@ export default function PaymentVerification() {
             </button>
 
             <Link 
-              href={`/store/${purchaseData?.subdomain || 'store'}`}
+              href={`/store/${subdomain || purchaseData?.subdomain || 'home'}`}
               className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
             >
               <ArrowLeft className="w-5 h-5 mr-2" />
