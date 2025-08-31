@@ -1,4 +1,4 @@
-// components/Navbar.jsx - Enhanced with Conditional Navigation & Better Animations
+// components/Navbar.jsx - Fixed spacing and removed Yello
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -74,13 +74,6 @@ const Navbar = () => {
       icon: <Shield className="w-4 h-4" />,
       color: 'text-blue-500',
       description: 'Best Coverage'
-    },
-    { 
-      name: 'Yello Data', 
-      href: '/purchase?network=YELLO',
-      icon: <Crown className="w-4 h-4" />,
-      color: 'text-orange-500',
-      description: 'Budget Friendly'
     },
     { 
       name: 'Bulk Purchase', 
@@ -175,12 +168,12 @@ const Navbar = () => {
               </motion.div>
             </Link>
 
-            {/* Desktop Navigation - Conditional Rendering */}
-            <div className="hidden lg:flex items-center space-x-1">
+            {/* Desktop Navigation - Fixed spacing */}
+            <div className="hidden lg:flex items-center space-x-3">
               <NavLink 
                 href="/" 
                 label="Home" 
-                icon={<Home className="w-4 h-4 mr-1" />}
+                icon={<Home className="w-4 h-4 mr-1.5" />}
                 onClick={() => handleLinkClick('/')} 
                 isActive={activeLink === '/'} 
               />
@@ -191,15 +184,15 @@ const Navbar = () => {
                   <button
                     onMouseEnter={() => setIsServicesOpen(true)}
                     onMouseLeave={() => setIsServicesOpen(false)}
-                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+                    className={`flex items-center px-5 py-2 rounded-lg font-medium transition-all duration-300 ${
                       activeLink.includes('purchase') 
                         ? 'bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700' 
                         : 'text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    <Database className="w-4 h-4 mr-1" />
+                    <Database className="w-4 h-4 mr-1.5" />
                     Services
-                    <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-4 h-4 ml-1.5 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} />
                   </button>
                   
                   <AnimatePresence>
@@ -252,7 +245,7 @@ const Navbar = () => {
                   <NavLink 
                     href="/result-checker" 
                     label="Result Checker" 
-                    icon={<GraduationCap className="w-4 h-4 mr-1" />}
+                    icon={<GraduationCap className="w-4 h-4 mr-1.5" />}
                     onClick={() => handleLinkClick('/result-checker')}
                     isActive={activeLink === '/result-checker'}
                   />
@@ -260,7 +253,7 @@ const Navbar = () => {
                   <NavLink 
                     href="/store_management" 
                     label="Store" 
-                    icon={<Building2 className="w-4 h-4 mr-1" />}
+                    icon={<Building2 className="w-4 h-4 mr-1.5" />}
                     onClick={() => handleLinkClick('/store_management')}
                     isActive={activeLink === '/store_management'}
                   />
@@ -274,26 +267,10 @@ const Navbar = () => {
                   />
                 </>
               )}
-              
-              <NavLink 
-                href="/about" 
-                label="About" 
-                icon={<Info className="w-4 h-4 mr-1" />}
-                onClick={() => handleLinkClick('/about')}
-                isActive={activeLink === '/about'}
-              />
-              
-              <NavLink 
-                href="/contact" 
-                label="Contact" 
-                icon={<Phone className="w-4 h-4 mr-1" />}
-                onClick={() => handleLinkClick('/contact')}
-                isActive={activeLink === '/contact'}
-              />
             </div>
 
-            {/* Right Section */}
-            <div className="hidden lg:flex items-center space-x-3">
+            {/* Right Section - Added more spacing */}
+            <div className="hidden lg:flex items-center space-x-4">
               {/* Notification Bell */}
               {isLoggedIn && (
                 <motion.button 
@@ -359,7 +336,7 @@ const Navbar = () => {
                     <Link 
                       href="/auth" 
                       onClick={() => handleLinkClick('/auth')}
-                      className="px-4 py-2 text-gray-700 hover:text-purple-600 font-medium transition-colors"
+                      className="px-5 py-2 text-gray-700 hover:text-purple-600 font-medium transition-colors"
                     >
                       Login
                     </Link>
@@ -484,14 +461,6 @@ const Navbar = () => {
                       </motion.div>
                     </>
                   )}
-                  
-                  <motion.div variants={itemVariants}>
-                    <MobileLink href="/about" label="About" icon={<Info className="w-4 h-4 mr-2" />} onClick={() => handleLinkClick('/about')} />
-                  </motion.div>
-                  
-                  <motion.div variants={itemVariants}>
-                    <MobileLink href="/contact" label="Contact" icon={<Phone className="w-4 h-4 mr-2" />} onClick={() => handleLinkClick('/contact')} />
-                  </motion.div>
 
                   <motion.hr variants={itemVariants} className="my-3 border-gray-100" />
 
@@ -559,13 +528,13 @@ const Navbar = () => {
   );
 };
 
-// Helper Components
+// Helper Components with improved spacing
 const NavLink = ({ href, label, icon, onClick, isActive, highlight }) => (
   <Link
     href={href}
     onClick={onClick}
     className={`
-      flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-300
+      flex items-center px-5 py-2 rounded-lg font-medium transition-all duration-300
       ${isActive 
         ? 'bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700' 
         : highlight 

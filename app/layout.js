@@ -21,7 +21,7 @@ export default function RootLayout({ children }) {
   const pathname = usePathname();
   
   // Check if we're on a store page
-  const isStorePage = pathname?.startsWith('/store/');
+  const isStorePage = pathname?.startsWith('/store/') || pathname.startsWith === '/verify/store/';
   
   return (
     <html lang="en">
