@@ -1,4 +1,3 @@
-// app/admin/purchases/page.js - Complete with truncated references
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -15,6 +14,7 @@ export default function PurchasesManagement() {
   const router = useRouter();
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
   const [selectedPurchase, setSelectedPurchase] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showBulkUpdateModal, setShowBulkUpdateModal] = useState(false);
@@ -103,6 +103,7 @@ export default function PurchasesManagement() {
   };
 
   const handleSingleStatusUpdate = async (purchaseId, newStatus, adminNotes = '') => {
+    setUpdating(true);
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`https://cletech-server.onrender.com/api/admin/purchases/${purchaseId}`, {
@@ -118,13 +119,39 @@ export default function PurchasesManagement() {
       });
       
       if (response.ok) {
-        fetchPurchases();
+        const updatedPurchase = await response.json();
+        
+        // Update the local state immediately for better UX
+        setPurchases(prevPurchases => 
+          prevPurchases.map(purchase => 
+            purchase._id === purchaseId 
+              ? { ...purchase, status: newStatus, adminNotes: adminNotes || purchase.adminNotes }
+              : purchase
+          )
+        );
+        
+        // Update selected purchase if it's the one being updated
+        if (selectedPurchase && selectedPurchase._id === purchaseId) {
+          setSelectedPurchase({ ...selectedPurchase, status: newStatus, adminNotes });
+        }
+        
+        // Close modal
         setShowDetailsModal(false);
+        
+        // Fetch fresh stats
+        fetchStats();
+        
+        // Show success message
         alert('Purchase status updated successfully');
+      } else {
+        const error = await response.json();
+        alert(`Failed to update: ${error.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error updating purchase:', error);
       alert('Failed to update purchase status');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -139,6 +166,7 @@ export default function PurchasesManagement() {
       return;
     }
 
+    setUpdating(true);
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`https://cletech-server.onrender.com/api/admin/purchases/bulk-status`, {
@@ -156,16 +184,41 @@ export default function PurchasesManagement() {
       
       if (response.ok) {
         const data = await response.json();
+        
+        // Update the local state immediately
+        setPurchases(prevPurchases => 
+          prevPurchases.map(purchase => 
+            selectedPurchases.includes(purchase._id)
+              ? { 
+                  ...purchase, 
+                  status: bulkStatus,
+                  adminNotes: bulkAdminNotes ? 
+                    (purchase.adminNotes ? purchase.adminNotes + '\n' + bulkAdminNotes : bulkAdminNotes) 
+                    : purchase.adminNotes
+                }
+              : purchase
+          )
+        );
+        
         alert(`Bulk update completed. ${data.data.successful.length} successful, ${data.data.failed.length} failed`);
-        fetchPurchases();
+        
+        // Reset bulk update state
         setShowBulkUpdateModal(false);
         setSelectedPurchases([]);
         setBulkStatus('');
         setBulkAdminNotes('');
+        
+        // Refresh stats
+        fetchStats();
+      } else {
+        const error = await response.json();
+        alert(`Failed to update: ${error.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error bulk updating purchases:', error);
       alert('Failed to bulk update purchases');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -262,6 +315,7 @@ export default function PurchasesManagement() {
                 value={bulkStatus}
                 onChange={(e) => setBulkStatus(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                disabled={updating}
               >
                 <option value="">Select Status</option>
                 <option value="pending">Pending</option>
@@ -283,6 +337,7 @@ export default function PurchasesManagement() {
                 rows="3"
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 placeholder="Add notes for this bulk update..."
+                disabled={updating}
               />
             </div>
 
@@ -298,9 +353,10 @@ export default function PurchasesManagement() {
             <div className="flex space-x-3 pt-4">
               <button
                 onClick={handleBulkStatusUpdate}
-                className="flex-1 px-4 py-2 bg-purple-600 dark:bg-purple-700 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors"
+                disabled={updating}
+                className="flex-1 px-4 py-2 bg-purple-600 dark:bg-purple-700 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Update Status
+                {updating ? 'Updating...' : 'Update Status'}
               </button>
               <button
                 onClick={() => {
@@ -308,7 +364,8 @@ export default function PurchasesManagement() {
                   setBulkStatus('');
                   setBulkAdminNotes('');
                 }}
-                className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                disabled={updating}
+                className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -331,7 +388,10 @@ export default function PurchasesManagement() {
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Purchase Details</h2>
             <button
-              onClick={() => setShowDetailsModal(false)}
+              onClick={() => {
+                setShowDetailsModal(false);
+                setSelectedPurchase(null);
+              }}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               <XCircle className="w-5 h-5 text-gray-500 dark:text-gray-400" />
@@ -375,7 +435,7 @@ export default function PurchasesManagement() {
               </div>
             </div>
 
-            {/* Status Update Section - SINGLE UPDATE */}
+            {/* Status Update Section */}
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
                 <Edit2 className="w-4 h-4 mr-2" />
@@ -390,6 +450,7 @@ export default function PurchasesManagement() {
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    disabled={updating}
                   >
                     <option value="pending">Pending</option>
                     <option value="processing">Processing</option>
@@ -409,14 +470,16 @@ export default function PurchasesManagement() {
                     onChange={(e) => setAdminNotes(e.target.value)}
                     placeholder="Optional notes..."
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    disabled={updating}
                   />
                 </div>
               </div>
               <button
                 onClick={() => handleSingleStatusUpdate(selectedPurchase._id, editStatus, adminNotes)}
-                className="mt-3 w-full px-4 py-2 bg-purple-600 dark:bg-purple-700 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors"
+                disabled={updating}
+                className="mt-3 w-full px-4 py-2 bg-purple-600 dark:bg-purple-700 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Update Status
+                {updating ? 'Updating...' : 'Update Status'}
               </button>
             </div>
 
@@ -455,7 +518,7 @@ export default function PurchasesManagement() {
               <button
                 onClick={() => {
                   setShowDetailsModal(false);
-                  router.push(`/admin/user/${selectedPurchase.userId?._id}/purchases`);
+                  router.push(`/admin/users/${selectedPurchase.userId?._id}/purchases`);
                 }}
                 className="mt-4 w-full px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center justify-center space-x-2"
               >
@@ -502,7 +565,10 @@ export default function PurchasesManagement() {
             {/* Action Buttons */}
             <div className="flex space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
               <button
-                onClick={() => setShowDetailsModal(false)}
+                onClick={() => {
+                  setShowDetailsModal(false);
+                  setSelectedPurchase(null);
+                }}
                 className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
               >
                 Close
@@ -527,12 +593,20 @@ export default function PurchasesManagement() {
             {selectedPurchases.length > 0 && (
               <button 
                 onClick={() => setShowBulkUpdateModal(true)}
-                className="px-4 py-2 bg-purple-600 dark:bg-purple-700 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors flex items-center space-x-2"
+                disabled={updating}
+                className="px-4 py-2 bg-purple-600 dark:bg-purple-700 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors flex items-center space-x-2 disabled:opacity-50"
               >
                 <Edit2 className="w-5 h-5" />
                 <span>Bulk Update ({selectedPurchases.length})</span>
               </button>
             )}
+            <button 
+              onClick={() => fetchPurchases()}
+              className="px-4 py-2 bg-gray-600 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors flex items-center space-x-2"
+            >
+              <RefreshCw className="w-5 h-5" />
+              <span>Refresh</span>
+            </button>
             <button className="px-4 py-2 bg-gray-600 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors flex items-center space-x-2">
               <Download className="w-5 h-5" />
               <span>Export Report</span>
@@ -816,7 +890,7 @@ export default function PurchasesManagement() {
                         </button>
                         {purchase.userId?._id && (
                           <button
-                            onClick={() => router.push(`/admin/users/${purchase.userId._id}/purchases`)}
+                            onClick={() => router.push(`/admin/user/${purchase.userId._id}/purchases`)}
                             className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
                             title="View All User Purchases"
                           >
