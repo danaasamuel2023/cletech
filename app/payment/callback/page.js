@@ -58,7 +58,7 @@ const PaymentCallbackInner = () => {
       setStatus('verifying');
       setError(null);
 
-      const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       
       if (!token) {
         setStatus('error');
@@ -66,7 +66,7 @@ const PaymentCallbackInner = () => {
         return;
       }
       
-      const response = await fetch(`/api/payments/verify/${reference}`, {
+      const response = await fetch(`https://cletech-server.onrender.com/api/verify/${reference}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
