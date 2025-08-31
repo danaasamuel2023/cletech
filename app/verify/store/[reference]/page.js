@@ -1,4 +1,4 @@
-// app/store/verify/[reference]/page.js
+// app/verify/store/[reference]/page.js
 'use client';
 
 import React, { useState, useEffect } from 'react';
