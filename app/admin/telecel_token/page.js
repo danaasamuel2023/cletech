@@ -38,7 +38,7 @@ const TelecelTokenManager = () => {
     try {
       console.log('[TELECEL UI] Checking token status...');
       
-      const response = await fetch('http://localhost:5000/api/admin/telecel/token/status', {
+      const response = await fetch('https://cletech-server.onrender.com/api/admin/telecel/token/status', {
         method: 'GET',
         headers: getAuthHeaders()
       });
@@ -89,7 +89,7 @@ const TelecelTokenManager = () => {
     try {
       console.log('[TELECEL UI] Requesting OTP...');
       
-      const response = await fetch('http://localhost:5000/api/admin/telecel/token/request-otp', {
+      const response = await fetch('https://cletech-server.onrender.com/api/admin/telecel/token/request-otp', {
         method: 'POST',
         headers: getAuthHeaders()
       });
@@ -147,7 +147,7 @@ const TelecelTokenManager = () => {
     try {
       console.log('[TELECEL UI] Refreshing token with OTP...');
       
-      const response = await fetch('http://localhost:5000/api/admin/telecel/token/refresh', {
+      const response = await fetch('https://cletech-server.onrender.com/api/admin/telecel/token/refresh', {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ otpCode })
@@ -206,7 +206,7 @@ const TelecelTokenManager = () => {
     try {
       console.log('[TELECEL UI] Loading token history...');
       
-      const response = await fetch('http://localhost:5000/api/admin/telecel/token/history', {
+      const response = await fetch('https://cletech-server.onrender.com/api/admin/telecel/token/history', {
         method: 'GET',
         headers: getAuthHeaders()
       });
@@ -276,7 +276,7 @@ const TelecelTokenManager = () => {
   const testConnection = async () => {
     try {
       console.log('[TELECEL UI] Testing connection...');
-      const response = await fetch('http://localhost:5000/api/admin/telecel/test', {
+      const response = await fetch('https://cletech-server.onrender.com/api/admin/telecel/test', {
         method: 'GET',
         headers: getAuthHeaders()
       });
