@@ -12,10 +12,10 @@ const TelecelTokenManager = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [showToken, setShowToken] = useState(false);
 
-  // FIXED: Get auth token from localStorage with correct key
+  // Get auth token from localStorage
   const getAuthHeaders = () => {
-    const token = localStorage.getItem('token'); // CHANGED FROM 'authToken' to 'token'
-    console.log('[TELECEL UI] Auth token present:', !!token); // Debug log
+    const token = localStorage.getItem('token');
+    console.log('[TELECEL UI] Auth token present:', !!token);
     
     if (!token) {
       console.error('[TELECEL UI] No auth token found in localStorage');
@@ -67,7 +67,6 @@ const TelecelTokenManager = () => {
     } catch (error) {
       console.error('[TELECEL UI] Failed to check token status:', error);
       
-      // Check if it's an auth issue
       if (error.message.includes('401')) {
         setMessage({ 
           type: 'error', 
@@ -185,7 +184,6 @@ const TelecelTokenManager = () => {
     } catch (error) {
       console.error('[TELECEL UI] Token refresh error:', error);
       
-      // Check if it's an authentication error
       if (error.message.includes('401')) {
         setMessage({ 
           type: 'error', 
@@ -246,9 +244,9 @@ const TelecelTokenManager = () => {
 
   const getStatusIcon = () => {
     const color = getStatusColor();
-    if (color === 'red') return <AlertCircle className="w-5 h-5 text-red-500" />;
-    if (color === 'yellow') return <Clock className="w-5 h-5 text-yellow-500" />;
-    return <CheckCircle className="w-5 h-5 text-green-500" />;
+    if (color === 'red') return <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400" />;
+    if (color === 'yellow') return <Clock className="w-5 h-5 text-yellow-500 dark:text-yellow-400" />;
+    return <CheckCircle className="w-5 h-5 text-green-500 dark:text-green-400" />;
   };
 
   const formatDate = (dateString) => {
@@ -272,7 +270,6 @@ const TelecelTokenManager = () => {
     });
   };
 
-  // Test connection button (for debugging)
   const testConnection = async () => {
     try {
       console.log('[TELECEL UI] Testing connection...');
@@ -301,35 +298,34 @@ const TelecelTokenManager = () => {
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <Shield className="w-8 h-8 text-blue-500" />
-            <h1 className="text-2xl font-bold text-gray-800">Telecel Token Manager</h1>
+            <Shield className="w-8 h-8 text-blue-500 dark:text-blue-400" />
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Telecel Token Manager</h1>
           </div>
           <div className="flex items-center gap-2">
-            {/* Debug: Test Connection Button */}
             <button
               onClick={testConnection}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-xs text-gray-500"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-xs text-gray-500 dark:text-gray-400"
               title="Test Backend Connection"
             >
               Test
             </button>
             <button
               onClick={toggleHistory}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               title="View History"
             >
-              <History className="w-5 h-5 text-gray-600" />
+              <History className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             </button>
             <button
               onClick={checkTokenStatus}
               disabled={loading}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               title="Refresh Status"
             >
-              <RefreshCw className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-5 h-5 text-gray-600 dark:text-gray-400 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
@@ -337,15 +333,15 @@ const TelecelTokenManager = () => {
         {/* Status Card */}
         {tokenStatus && (
           <div className={`p-4 rounded-lg border-2 ${
-            getStatusColor() === 'red' ? 'bg-red-50 border-red-200' :
-            getStatusColor() === 'yellow' ? 'bg-yellow-50 border-yellow-200' :
-            'bg-green-50 border-green-200'
+            getStatusColor() === 'red' ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' :
+            getStatusColor() === 'yellow' ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800' :
+            'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
           }`}>
             <div className="flex items-start justify-between">
               <div className="space-y-2 flex-1">
                 <div className="flex items-center gap-2">
                   {getStatusIcon()}
-                  <span className="font-semibold text-gray-700">
+                  <span className="font-semibold text-gray-700 dark:text-gray-200">
                     Status: {
                       tokenStatus.status === 'active' ? 'Active' : 
                       tokenStatus.status === 'expired' ? 'Expired' : 
@@ -357,10 +353,10 @@ const TelecelTokenManager = () => {
                 
                 {tokenStatus.status === 'active' && (
                   <>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
                       Expires: {formatDate(tokenStatus.expiresAt)}
                     </p>
-                    <p className="text-sm font-medium">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
                       Time remaining: {tokenStatus.hoursRemaining > 0 ? 
                         `${tokenStatus.hoursRemaining} hours` : 
                         'Less than 1 hour'}
@@ -369,8 +365,8 @@ const TelecelTokenManager = () => {
                     {/* Show token (masked) with toggle */}
                     {tokenStatus.token && (
                       <div className="flex items-center gap-2 mt-2">
-                        <span className="text-xs text-gray-500">Token:</span>
-                        <code className="text-xs bg-gray-100 px-2 py-1 rounded">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Token:</span>
+                        <code className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-800 dark:text-gray-200">
                           {showToken ? tokenStatus.token : maskToken(tokenStatus.token)}
                         </code>
                         <button
@@ -379,14 +375,14 @@ const TelecelTokenManager = () => {
                           title={showToken ? 'Hide token' : 'Show token'}
                         >
                           {showToken ? 
-                            <EyeOff className="w-4 h-4 text-gray-500" /> : 
-                            <Eye className="w-4 h-4 text-gray-500" />
+                            <EyeOff className="w-4 h-4 text-gray-500 dark:text-gray-400" /> : 
+                            <Eye className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                           }
                         </button>
                         {showToken && (
                           <button
                             onClick={() => copyToClipboard(tokenStatus.token)}
-                            className="text-xs text-blue-500 hover:text-blue-600"
+                            className="text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
                           >
                             Copy
                           </button>
@@ -397,9 +393,9 @@ const TelecelTokenManager = () => {
                 )}
                 
                 {tokenStatus.lastError && (
-                  <p className="text-sm text-red-600 mt-2">
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-2">
                     Last error: {tokenStatus.lastError.message} 
-                    <span className="text-xs text-gray-500 ml-1">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
                       ({formatDate(tokenStatus.lastError.occurredAt)})
                     </span>
                   </p>
@@ -407,13 +403,13 @@ const TelecelTokenManager = () => {
               </div>
               
               {tokenStatus.needsRefresh && (
-                <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
+                <span className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs font-medium rounded-full">
                   Refresh Soon
                 </span>
               )}
               
               {tokenStatus.status === 'expired' && (
-                <span className="px-3 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">
+                <span className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 text-xs font-medium rounded-full">
                   Action Required
                 </span>
               )}
@@ -423,18 +419,18 @@ const TelecelTokenManager = () => {
       </div>
 
       {/* Token Refresh Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <Key className="w-5 h-5" />
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+          <Key className="w-5 h-5 text-gray-700 dark:text-gray-300" />
           Refresh Token
         </h2>
 
         {/* Message Alert */}
         {message && (
           <div className={`mb-4 p-3 rounded-lg flex items-center gap-2 ${
-            message.type === 'error' ? 'bg-red-100 text-red-700' : 
-            message.type === 'warning' ? 'bg-yellow-100 text-yellow-700' :
-            'bg-green-100 text-green-700'
+            message.type === 'error' ? 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300' : 
+            message.type === 'warning' ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300' :
+            'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300'
           }`}>
             {message.type === 'error' ? <AlertCircle className="w-4 h-4" /> : 
              message.type === 'warning' ? <Clock className="w-4 h-4" /> :
@@ -442,7 +438,7 @@ const TelecelTokenManager = () => {
             <span className="flex-1">{message.text}</span>
             <button 
               onClick={() => setMessage(null)}
-              className="text-gray-500 hover:text-gray-700"
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
             >
               ×
             </button>
@@ -453,13 +449,13 @@ const TelecelTokenManager = () => {
           {/* Step 1: Request OTP */}
           {step === 'idle' && (
             <div className="space-y-3">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
                 Click below to request an OTP code. It will be sent to the registered Telecel phone number (059****4147).
               </p>
               <button
                 onClick={requestOTP}
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="w-4 h-4" />
                 {loading ? 'Sending OTP...' : 'Request OTP'}
@@ -471,7 +467,7 @@ const TelecelTokenManager = () => {
           {step === 'otp-requested' && (
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                   Enter OTP Code
                 </label>
                 <div className="relative">
@@ -480,15 +476,15 @@ const TelecelTokenManager = () => {
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     placeholder="Enter 6-digit OTP"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-lg font-mono tracking-wider"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent text-center text-lg font-mono tracking-wider"
                     maxLength="6"
                     autoFocus
                   />
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-400">
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500">
                     {otpCode.length}/6
                   </div>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   Enter the 6-digit code sent to 059****4147
                 </p>
               </div>
@@ -497,7 +493,7 @@ const TelecelTokenManager = () => {
                 <button
                   onClick={refreshToken}
                   disabled={loading || otpCode.length !== 6}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-2 bg-green-500 dark:bg-green-600 text-white rounded-lg hover:bg-green-600 dark:hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <RefreshCw className="w-4 h-4" />
                   {loading ? 'Refreshing Token...' : 'Refresh Token'}
@@ -505,7 +501,7 @@ const TelecelTokenManager = () => {
                 <button
                   onClick={requestOTP}
                   disabled={loading}
-                  className="px-4 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 border border-blue-500 dark:border-blue-400 text-blue-500 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors disabled:opacity-50"
                 >
                   Resend OTP
                 </button>
@@ -516,7 +512,7 @@ const TelecelTokenManager = () => {
                     setMessage(null);
                   }}
                   disabled={loading}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   Cancel
                 </button>
@@ -528,62 +524,62 @@ const TelecelTokenManager = () => {
 
       {/* Token History */}
       {showHistory && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <History className="w-5 h-5" />
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+            <History className="w-5 h-5 text-gray-700 dark:text-gray-300" />
             Token History
           </h2>
           
           {tokenHistory.length > 0 ? (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Expires</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Refreshed By</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Uses</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Created</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Expires</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Status</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Refreshed By</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Uses</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {tokenHistory.map((item, index) => (
                     <tr key={item._id || index}>
-                      <td className="px-4 py-2 text-sm">{formatDate(item.createdAt)}</td>
-                      <td className="px-4 py-2 text-sm">{formatDate(item.expiresAt)}</td>
+                      <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{formatDate(item.createdAt)}</td>
+                      <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{formatDate(item.expiresAt)}</td>
                       <td className="px-4 py-2">
                         <span className={`px-2 py-1 text-xs rounded-full ${
-                          item.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                          item.isActive ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
                         }`}>
                           {item.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
-                      <td className="px-4 py-2 text-sm">
+                      <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">
                         {item.lastRefreshedBy?.name || 'System'}
                       </td>
-                      <td className="px-4 py-2 text-sm">{item.refreshCount || 0}</td>
+                      <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{item.refreshCount || 0}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           ) : (
-            <p className="text-gray-500 text-sm">No token history available</p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">No token history available</p>
           )}
         </div>
       )}
 
       {/* Instructions */}
-      <div className="bg-blue-50 rounded-lg border border-blue-200 p-4">
-        <h3 className="font-semibold text-blue-900 mb-2">How Token Refresh Works:</h3>
-        <ol className="list-decimal list-inside space-y-1 text-sm text-blue-800">
+      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-4">
+        <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">How Token Refresh Works:</h3>
+        <ol className="list-decimal list-inside space-y-1 text-sm text-blue-800 dark:text-blue-200">
           <li>Click "Request OTP" to receive a verification code via SMS</li>
           <li>Enter the 6-digit OTP code you receive on 059****4147</li>
           <li>Click "Refresh Token" to authenticate and get a new 12-hour token</li>
           <li>The system will automatically use the new token for all bundle transactions</li>
         </ol>
-        <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
-          <p className="text-xs text-yellow-800">
+        <div className="mt-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+          <p className="text-xs text-yellow-800 dark:text-yellow-200">
             <strong>Important:</strong> Refresh the token before it expires to avoid service interruption. 
             The system will warn you when less than 2 hours remain.
           </p>
@@ -591,24 +587,24 @@ const TelecelTokenManager = () => {
       </div>
 
       {/* System Status */}
-      <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
-        <h3 className="font-semibold text-gray-700 mb-2">System Configuration:</h3>
+      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <h3 className="font-semibold text-gray-700 dark:text-gray-200 mb-2">System Configuration:</h3>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <span className="text-gray-500">Account Email:</span>
-            <p className="font-mono">danaasamuel20frimpong@gmail.com</p>
+            <span className="text-gray-500 dark:text-gray-400">Account Email:</span>
+            <p className="font-mono text-gray-800 dark:text-gray-100">danaasamuel20frimpong@gmail.com</p>
           </div>
           <div>
-            <span className="text-gray-500">Registered Phone:</span>
-            <p className="font-mono">059****4147</p>
+            <span className="text-gray-500 dark:text-gray-400">Registered Phone:</span>
+            <p className="font-mono text-gray-800 dark:text-gray-100">059****4147</p>
           </div>
           <div>
-            <span className="text-gray-500">Subscriber MSISDN:</span>
-            <p className="font-mono">233509240147</p>
+            <span className="text-gray-500 dark:text-gray-400">Subscriber MSISDN:</span>
+            <p className="font-mono text-gray-800 dark:text-gray-100">233509240147</p>
           </div>
           <div>
-            <span className="text-gray-500">API Endpoint:</span>
-            <p className="font-mono">play.telecel.com.gh</p>
+            <span className="text-gray-500 dark:text-gray-400">API Endpoint:</span>
+            <p className="font-mono text-gray-800 dark:text-gray-100">play.telecel.com.gh</p>
           </div>
         </div>
       </div>
