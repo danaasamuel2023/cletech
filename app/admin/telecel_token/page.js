@@ -592,7 +592,7 @@ const TelecelTokenManager = () => {
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <span className="text-gray-500 dark:text-gray-400">Account Email:</span>
-            <p className="font-mono text-gray-800 dark:text-gray-100">danaasamuel20frimpong@gmail.com</p>
+            <p className="font-mono text-gray-800 dark:text-gray-100">ctefutor@metropolitangh.com</p>
           </div>
           <div>
             <span className="text-gray-500 dark:text-gray-400">Registered Phone:</span>
