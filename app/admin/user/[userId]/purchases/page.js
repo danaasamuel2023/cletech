@@ -7,7 +7,8 @@ import {
   ShoppingCart, User, Filter, Download, TrendingUp,
   Calendar, Package, DollarSign, Clock, CheckCircle,
   XCircle, RefreshCw, ArrowLeft, ToggleLeft, ToggleRight,
-  Smartphone, CreditCard, Wallet, Globe, AlertCircle
+  Smartphone, CreditCard, Wallet, Globe, AlertCircle,
+  TrendingDown
 } from 'lucide-react';
 
 export default function UserPurchases() {
@@ -36,48 +37,47 @@ export default function UserPurchases() {
     }
   }, [userId, todayOnly, filters]);
 
-  // In app/admin/users/[userId]/purchases/page.js - Update the fetchUserPurchases function
+  const fetchUserPurchases = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem('token');
+      const queryParams = new URLSearchParams({
+        todayOnly: todayOnly.toString(),
+        ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v !== ''))
+      });
 
-const fetchUserPurchases = async () => {
-  setLoading(true);
-  setError(null);
-  try {
-    const token = localStorage.getItem('token');
-    const queryParams = new URLSearchParams({
-      todayOnly: todayOnly.toString(),
-      ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v !== ''))
-    });
+      const response = await fetch(
+        `https://cletech-server.onrender.com/api/admin/users/${userId}/purchases?${queryParams}`,
+        {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }
+      );
 
-    const response = await fetch(
-      `https://cletech-server.onrender.com/api/admin/users/${userId}/purchases?${queryParams}`,
-      {
-        headers: { 'Authorization': `Bearer ${token}` }
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Debug logging
+        console.log('User purchases response:', data);
+        console.log('Statistics:', data.data.statistics);
+        console.log('Purchases count:', data.data.purchases?.length);
+        
+        setUserInfo(data.data.user);
+        setPurchases(data.data.purchases || []);
+        setStatistics(data.data.statistics);
+      } else if (response.status === 404) {
+        setError('User not found');
+      } else {
+        setError('Failed to fetch user purchases');
       }
-    );
-
-    if (response.ok) {
-      const data = await response.json();
-      
-      // Debug logging
-      console.log('User purchases response:', data);
-      console.log('Statistics:', data.data.statistics);
-      console.log('Purchases count:', data.data.purchases?.length);
-      
-      setUserInfo(data.data.user);
-      setPurchases(data.data.purchases || []);
-      setStatistics(data.data.statistics);
-    } else if (response.status === 404) {
-      setError('User not found');
-    } else {
-      setError('Failed to fetch user purchases');
+    } catch (error) {
+      console.error('Error fetching user purchases:', error);
+      setError('An error occurred while fetching data');
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Error fetching user purchases:', error);
-    setError('An error occurred while fetching data');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
+
   const fetchUserSummary = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -99,13 +99,15 @@ const fetchUserPurchases = async () => {
   };
 
   const exportToCSV = () => {
-    // Create CSV content
-    const headers = ['Reference', 'Network', 'Capacity (GB)', 'Amount (GHS)', 'Phone Number', 'Status', 'Date'];
+    // Create CSV content with balance columns
+    const headers = ['Reference', 'Network', 'Capacity (GB)', 'Amount (GHS)', 'Balance Before', 'Balance After', 'Phone Number', 'Status', 'Date'];
     const rows = purchases.map(p => [
       p.reference,
       p.network,
       p.capacity,
       p.price,
+      p.balanceInfo?.balanceBefore?.toFixed(2) || 'N/A',
+      p.balanceInfo?.balanceAfter?.toFixed(2) || 'N/A',
       p.phoneNumber,
       p.status,
       new Date(p.createdAt).toLocaleString()
@@ -246,7 +248,7 @@ const fetchUserPurchases = async () => {
                     <p className="font-semibold capitalize">{userInfo.role}</p>
                   </div>
                   <div>
-                    <p className="text-purple-200 text-sm">Wallet Balance</p>
+                    <p className="text-purple-200 text-sm">Current Wallet Balance</p>
                     <p className="text-2xl font-bold">GHS {userInfo.walletBalance?.toFixed(2)}</p>
                   </div>
                 </div>
@@ -436,7 +438,7 @@ const fetchUserPurchases = async () => {
         </div>
       </div>
 
-      {/* Purchases Table */}
+      {/* Purchases Table with Balance Columns */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -455,6 +457,12 @@ const fetchUserPurchases = async () => {
                   Amount
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Balance Before
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Balance After
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Payment
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -468,7 +476,7 @@ const fetchUserPurchases = async () => {
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {purchases.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan="9" className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                     No purchases found {todayOnly ? 'for today' : 'for this period'}
                   </td>
                 </tr>
@@ -501,6 +509,39 @@ const fetchUserPurchases = async () => {
                       <p className="text-sm font-semibold text-gray-900 dark:text-white">
                         GHS {purchase.price}
                       </p>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span className="text-sm text-gray-900 dark:text-white">
+                          GHS {purchase.balanceInfo?.balanceBefore?.toFixed(2) || 'N/A'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span className="text-sm text-gray-900 dark:text-white font-medium">
+                          GHS {purchase.balanceInfo?.balanceAfter?.toFixed(2) || 'N/A'}
+                        </span>
+                        {purchase.balanceInfo && purchase.balanceInfo.balanceBefore !== undefined && purchase.balanceInfo.balanceAfter !== undefined && (
+                          <span className={`text-xs flex items-center ${
+                            purchase.balanceInfo.balanceAfter < purchase.balanceInfo.balanceBefore 
+                              ? 'text-red-600 dark:text-red-400' 
+                              : 'text-green-600 dark:text-green-400'
+                          }`}>
+                            {purchase.balanceInfo.balanceAfter < purchase.balanceInfo.balanceBefore ? (
+                              <>
+                                <TrendingDown className="w-3 h-3 mr-1" />
+                                −{(purchase.balanceInfo.balanceBefore - purchase.balanceInfo.balanceAfter).toFixed(2)}
+                              </>
+                            ) : (
+                              <>
+                                <TrendingUp className="w-3 h-3 mr-1" />
+                                +{(purchase.balanceInfo.balanceAfter - purchase.balanceInfo.balanceBefore).toFixed(2)}
+                              </>
+                            )}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-2">
