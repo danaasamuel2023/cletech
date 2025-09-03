@@ -1,4 +1,4 @@
-// app/admin/layout.js - Updated with real data fetching
+// app/admin/layout.js - Complete updated file with Telecel Token link
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -273,6 +273,7 @@ export default function AdminLayout({ children }) {
       href: '/admin/settings',
       submenu: [
         { label: 'General Settings', href: '/admin/settings' },
+        { label: 'Telecel Token', href: '/admin/telecel_token' },
         { label: 'Maintenance Mode', href: '/admin/settings/maintenance' },
         { label: 'System Health', href: '/admin/settings/health' },
         { label: 'Backup & Restore', href: '/admin/settings/backup' }
@@ -286,6 +287,10 @@ export default function AdminLayout({ children }) {
     if (pathname.includes('/users/') && pathname.includes('/purchases') && item.id === 'users') {
       return true;
     }
+    // Check for Telecel Token page
+    if (pathname === '/admin/telecel_token' && item.id === 'settings') {
+      return true;
+    }
     if (pathname === item.href) return true;
     if (item.submenu) {
       return item.submenu.some(sub => pathname === sub.href);
@@ -293,7 +298,6 @@ export default function AdminLayout({ children }) {
     return false;
   };
 
-  // Rest of the component remains the same...
   return (
     <div className={`min-h-screen flex ${darkMode ? 'dark' : ''}`}>
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex w-full">
@@ -384,7 +388,9 @@ export default function AdminLayout({ children }) {
                         key={index}
                         href={subItem.href}
                         className={`flex items-center justify-between px-3 py-2 text-sm rounded-lg transition-all font-medium ${
-                          isActive(subItem.href) || (subItem.href === '/admin/users/purchases' && pathname.includes('/users/') && pathname.includes('/purchases'))
+                          isActive(subItem.href) || 
+                          (subItem.href === '/admin/users/purchases' && pathname.includes('/users/') && pathname.includes('/purchases')) ||
+                          (subItem.href === '/admin/telecel_token' && pathname === '/admin/telecel_token')
                             ? 'bg-purple-100 dark:bg-purple-900 text-purple-900 dark:text-purple-100 font-semibold'
                             : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
                         }`}
@@ -431,7 +437,7 @@ export default function AdminLayout({ children }) {
           </div>
         </aside>
 
-        {/* Mobile Sidebar - same structure with dynamic badges */}
+        {/* Mobile Sidebar */}
         <div className={`lg:hidden fixed inset-0 z-50 ${mobileMenuOpen ? 'block' : 'hidden'}`}>
           <div className="fixed inset-0 bg-black bg-opacity-60" onClick={() => setMobileMenuOpen(false)} />
           <aside className="fixed left-0 top-0 h-full w-64 bg-white dark:bg-gray-800 shadow-2xl">
@@ -526,7 +532,9 @@ export default function AdminLayout({ children }) {
                   </Link>
                   <ChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                   <span className="text-gray-900 dark:text-white font-bold">
-                    {pathname.includes('/users/') && pathname.includes('/purchases') 
+                    {pathname === '/admin/telecel_token' 
+                      ? 'Telecel Token'
+                      : pathname.includes('/users/') && pathname.includes('/purchases') 
                       ? 'User Purchases' 
                       : menuItems.find(item => isParentActive(item))?.label || 'Dashboard'}
                   </span>
