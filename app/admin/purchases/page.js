@@ -518,7 +518,7 @@ export default function PurchasesManagement() {
               <button
                 onClick={() => {
                   setShowDetailsModal(false);
-                  router.push(`/admin/users/${selectedPurchase.userId?._id}/purchases`);
+                  router.push(`/admin/user/${selectedPurchase.userId?._id}/purchases`);
                 }}
                 className="mt-4 w-full px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center justify-center space-x-2"
               >
