@@ -938,7 +938,7 @@ export default function SystemSettings() {
             </div>
           )}
 
-          {/* Payment Gateway Settings */}
+          {/* Payment Gateway Settings - UPDATED */}
           {activeTab === 'payment' && (
             <div className="space-y-6">
               <SettingCard
@@ -1035,6 +1035,50 @@ export default function SystemSettings() {
                       
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Stores API Key
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showPassword.storesApikey ? "text" : "password"}
+                            value={settings.paymentGateway?.paystack?.storesApikey || ''}
+                            onChange={(e) => {
+                              setSettings(prev => ({
+                                ...prev,
+                                paymentGateway: {
+                                  ...prev.paymentGateway,
+                                  paystack: {
+                                    ...prev.paymentGateway?.paystack,
+                                    storesApikey: e.target.value
+                                  }
+                                }
+                              }));
+                              setHasChanges(true);
+                            }}
+                            placeholder="sk_live_stores_..."
+                            className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(prev => ({
+                              ...prev,
+                              storesApikey: !prev.storesApikey
+                            }))}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                          >
+                            {showPassword.storesApikey ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Separate API key for agent stores transactions
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Webhook URL
                         </label>
                         <input
@@ -1054,31 +1098,6 @@ export default function SystemSettings() {
                             setHasChanges(true);
                           }}
                           placeholder="https://yourdomain.com/webhook/paystack"
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Subaccount Code
-                        </label>
-                        <input
-                          type="text"
-                          value={settings.paymentGateway?.paystack?.subaccountCode || ''}
-                          onChange={(e) => {
-                            setSettings(prev => ({
-                              ...prev,
-                              paymentGateway: {
-                                ...prev.paymentGateway,
-                                paystack: {
-                                  ...prev.paymentGateway?.paystack,
-                                  subaccountCode: e.target.value
-                                }
-                              }
-                            }));
-                            setHasChanges(true);
-                          }}
-                          placeholder="ACCT_..."
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
                         />
                       </div>
@@ -1137,24 +1156,6 @@ export default function SystemSettings() {
                       </div>
                     </div>
                   )}
-                  
-                  <ToggleSwitch
-                    enabled={settings.paymentGateway?.paystack?.splitPayment || false}
-                    onChange={(enabled) => {
-                      setSettings(prev => ({
-                        ...prev,
-                        paymentGateway: {
-                          ...prev.paymentGateway,
-                          paystack: {
-                            ...prev.paymentGateway?.paystack,
-                            splitPayment: enabled
-                          }
-                        }
-                      }));
-                      setHasChanges(true);
-                    }}
-                    label="Enable Split Payment"
-                  />
                 </div>
               </SettingCard>
 
