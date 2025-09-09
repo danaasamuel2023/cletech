@@ -1,4 +1,4 @@
-// app/admin/layout.js - Complete updated file with Telecel Token link
+// app/admin/layout.js - Complete updated file with Automation link
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -141,6 +141,13 @@ export default function AdminLayout({ children }) {
       badge: null
     },
     {
+      id: 'automation',
+      label: 'Automation',
+      icon: <Activity className="w-5 h-5" />,
+      href: '/admin/order-monitoring',
+      badge: 'Live'
+    },
+    {
       id: 'users',
       label: 'User Management',
       icon: <Users className="w-5 h-5" />,
@@ -215,34 +222,22 @@ export default function AdminLayout({ children }) {
         { label: 'Sales Report', href: '/admin/results/sales' }
       ]
     },
-    {
-      id: 'finance',
-      label: 'Finance',
-      icon: <DollarSign className="w-5 h-5" />,
-      href: '/admin/finance',
-      submenu: [
-        { label: 'Transactions', href: '/admin/finance/transactions' },
-        { label: 'Wallet Management', href: '/admin/finance/wallets' },
-        { label: 'Agent Profits', href: '/admin/finance/profits' },
-        { 
-          label: 'Withdrawals', 
-          href: '/admin/finance/withdrawals', 
-          badge: badges.pendingWithdrawals > 0 ? badges.pendingWithdrawals : null 
-        }
-      ]
-    },
-    {
-      id: 'analytics',
-      label: 'Analytics',
-      icon: <BarChart3 className="w-5 h-5" />,
-      href: '/admin/analytics',
-      submenu: [
-        { label: 'Revenue Report', href: '/admin/analytics/revenue' },
-        { label: 'User Analytics', href: '/admin/analytics/users' },
-        { label: 'Network Stats', href: '/admin/analytics/networks' },
-        { label: 'Agent Performance', href: '/admin/analytics/agents' }
-      ]
-    },
+    // {
+    //   id: 'transactions',
+    //   label: 'Transactions',
+    //   icon: <CreditCard className="w-5 h-5" />,
+    //   href: '/admin/transactions',
+    //   submenu: [
+    //     { label: 'All Transactions', href: '/admin/transactions' },
+    //     { label: 'Wallet Management', href: '/admin/transactions/wallets' },
+    //     { label: 'Agent Profits', href: '/admin/transactions/profits' },
+    //     { 
+    //       label: 'Withdrawals', 
+    //       href: '/admin/transactions/withdrawals', 
+    //       badge: badges.pendingWithdrawals > 0 ? badges.pendingWithdrawals : null 
+    //     }
+    //   ]
+    // },
     {
       id: 'notifications',
       label: 'Notifications',
@@ -283,6 +278,10 @@ export default function AdminLayout({ children }) {
 
   const isActive = (href) => pathname === href;
   const isParentActive = (item) => {
+    // Check for automation page
+    if (pathname === '/admin/order-monitoring' && item.id === 'automation') {
+      return true;
+    }
     // Check for dynamic routes
     if (pathname.includes('/users/') && pathname.includes('/purchases') && item.id === 'users') {
       return true;
@@ -532,7 +531,9 @@ export default function AdminLayout({ children }) {
                   </Link>
                   <ChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                   <span className="text-gray-900 dark:text-white font-bold">
-                    {pathname === '/admin/telecel_token' 
+                    {pathname === '/admin/order-monitoring' 
+                      ? 'Automation'
+                      : pathname === '/admin/telecel_token' 
                       ? 'Telecel Token'
                       : pathname.includes('/users/') && pathname.includes('/purchases') 
                       ? 'User Purchases' 
