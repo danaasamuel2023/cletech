@@ -1,4 +1,4 @@
-// app/dashboard/store/page.js - Complete Agent Store Management (Fixed)
+// app/dashboard/store/page.js - Complete Agent Store Management with All Fixes
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -8,12 +8,13 @@ import {
   Phone, Mail, Globe, Loader2, Copy,
   Check, X, AlertCircle, TrendingUp, Users, ShoppingBag,
   Wallet, ArrowUpRight, ArrowDownRight, Calendar, Bell,
-  ChevronDown, ChevronRight, Image as ImageIcon, Link2
+  ChevronDown, ChevronRight, Image as ImageIcon, Link2,
+  CreditCard, Building
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AgentStoreManagement() {
-  // State Management
+  // ==================== STATE MANAGEMENT ====================
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -93,6 +94,27 @@ export default function AgentStoreManagement() {
     withdrawnProfit: 0
   });
 
+  // Bank & Withdrawal States
+  const [bankAccounts, setBankAccounts] = useState(null);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [showAddBankModal, setShowAddBankModal] = useState(false);
+  const [withdrawalHistory, setWithdrawalHistory] = useState([]);
+  const [banks, setBanks] = useState([]);
+  const [loadingBanks, setLoadingBanks] = useState(false);
+  const [processingWithdrawal, setProcessingWithdrawal] = useState(false);
+  
+  const [bankForm, setBankForm] = useState({
+    accountNumber: '',
+    bankCode: '',
+    accountName: ''
+  });
+  
+  const [withdrawForm, setWithdrawForm] = useState({
+    amount: '',
+    reason: 'Agent profit withdrawal',
+    useSavedAccount: true
+  });
+
   // File Upload States
   const [logoFile, setLogoFile] = useState(null);
   const [bannerFile, setBannerFile] = useState(null);
@@ -111,7 +133,41 @@ export default function AgentStoreManagement() {
     0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40, 50, 100
   ];
 
-  // Auto-clear messages
+  // ==================== HELPER FUNCTIONS ====================
+  const removeDuplicates = (array, generateKey) => {
+    const seen = new Set();
+    return array.filter(item => {
+      const key = generateKey ? generateKey(item) : (item._id || item.id || JSON.stringify(item));
+      if (seen.has(key)) {
+        console.warn('Duplicate found and removed:', key);
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+  };
+
+  const generateUniqueKey = (item, prefix = '') => {
+    if (item._id) return item._id;
+    if (item.id) return item.id;
+    if (item.reference) return item.reference;
+    // Create a unique key from multiple fields
+    return `${prefix}-${item.network || ''}-${item.capacity || ''}-${item.createdAt || Date.now()}-${Math.random()}`;
+  };
+
+  // Copy to clipboard function
+  const copyToClipboard = async (text, message = 'Copied to clipboard!') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setSuccess(message);
+      setTimeout(() => setSuccess(''), 2000);
+    } catch (err) {
+      setError('Failed to copy to clipboard');
+      setTimeout(() => setError(''), 2000);
+    }
+  };
+
+  // ==================== AUTO-CLEAR MESSAGES ====================
   useEffect(() => {
     if (success) {
       const timer = setTimeout(() => setSuccess(''), 5000);
@@ -126,11 +182,32 @@ export default function AgentStoreManagement() {
     }
   }, [error]);
 
+  // ==================== INITIAL DATA LOAD ====================
   useEffect(() => {
+    // Run cleanup on initial mount
+    const cleanupData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('https://cletech-server.onrender.com/api/store/cleanup-pricing', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Data cleanup completed:', data.message);
+        }
+      } catch (error) {
+        console.log('Cleanup not necessary or failed:', error);
+      }
+    };
+    
+    cleanupData();
     fetchStoreData();
   }, []);
 
-  // Fixed: Moved these useEffect hooks to the main component body
   useEffect(() => {
     if (activeTab === 'analytics') {
       fetchAnalytics();
@@ -140,22 +217,12 @@ export default function AgentStoreManagement() {
   useEffect(() => {
     if (activeTab === 'profits') {
       fetchProfits();
+      fetchBankAccounts();
+      fetchWithdrawalHistory();
     }
   }, [activeTab]);
 
-  // Copy to clipboard function
-  const copyToClipboard = async (text, message = 'Copied to clipboard!') => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setSuccess(message);
-      setTimeout(() => setSuccess(''), 2000);
-    } catch (err) {
-      setError('Failed to copy to clipboard');
-      setTimeout(() => setError(''), 2000);
-    }
-  };
-
-  // API Functions
+  // ==================== API FUNCTIONS ====================
   const fetchStoreData = async () => {
     setLoading(true);
     try {
@@ -176,7 +243,17 @@ export default function AgentStoreManagement() {
           location: data.data.location || { address: '', city: '', region: '' },
           settings: data.data.settings || settingsForm.settings
         });
-        setCustomPricing(data.data.customPricing || []);
+        
+        // Clean up custom pricing to remove duplicates
+        const cleanPricing = removeDuplicates(
+          data.data.customPricing || [], 
+          (item) => `${item.network}-${item.capacity}`
+        ).map((price, index) => ({
+          ...price,
+          uniqueId: price._id || `${price.network}-${price.capacity}-${index}`
+        }));
+        
+        setCustomPricing(cleanPricing);
         setShowCreateStore(false);
       } else if (response.status === 404) {
         setShowCreateStore(true);
@@ -190,16 +267,13 @@ export default function AgentStoreManagement() {
   };
 
   const createStore = async () => {
-    // Set loading state immediately
     setSaving(true);
     setError('');
     setSuccess('');
     setProcessingMessage('Validating store information...');
 
-    // Small delay to show loading state
     await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Validate WhatsApp group link format
     const whatsappGroupRegex = /^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+$/;
     if (!whatsappGroupRegex.test(storeForm.whatsappGroupLink)) {
       setError('Please enter a valid WhatsApp group invite link');
@@ -208,7 +282,6 @@ export default function AgentStoreManagement() {
       return;
     }
 
-    // Validate WhatsApp number format
     const phoneRegex = /^(\+233|0)[2-9]\d{8}$/;
     if (!phoneRegex.test(storeForm.whatsappNumber)) {
       setError('Please enter a valid Ghana phone number');
@@ -238,7 +311,6 @@ export default function AgentStoreManagement() {
         setSuccess('Store created successfully! WhatsApp group link added.');
         setStore(data.data);
         
-        // Clear form
         setStoreForm({
           storeName: '',
           subdomain: '',
@@ -249,19 +321,16 @@ export default function AgentStoreManagement() {
           alternativePhone: ''
         });
         
-        // Short delay before hiding create form
         await new Promise(resolve => setTimeout(resolve, 1000));
         setShowCreateStore(false);
         fetchStoreData();
         
-        // Navigate to overview
         setTimeout(() => {
           setActiveTab('overview');
           setSuccess('');
           setProcessingMessage('');
         }, 2000);
       } else {
-        // Handle specific validation errors
         if (data.errors && Array.isArray(data.errors)) {
           const errorMessages = data.errors.map(err => err.message).join(', ');
           setError(errorMessages);
@@ -276,13 +345,11 @@ export default function AgentStoreManagement() {
       setProcessingMessage('');
     } finally {
       setSaving(false);
-      // Clear processing message after a delay if still showing
       setTimeout(() => setProcessingMessage(''), 3000);
     }
   };
 
   const updateSettings = async () => {
-    // Validate WhatsApp group link format if provided
     if (settingsForm.whatsappGroupLink) {
       const whatsappGroupRegex = /^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+$/;
       if (!whatsappGroupRegex.test(settingsForm.whatsappGroupLink)) {
@@ -291,7 +358,6 @@ export default function AgentStoreManagement() {
       }
     }
 
-    // Validate WhatsApp number format if provided
     if (settingsForm.whatsappNumber) {
       const phoneRegex = /^(\+233|0)[2-9]\d{8}$/;
       if (!phoneRegex.test(settingsForm.whatsappNumber)) {
@@ -498,7 +564,16 @@ export default function AgentStoreManagement() {
       const data = await response.json();
 
       if (data.success) {
-        setProfits(data.data.profits);
+        // Clean profits data
+        const cleanProfits = (data.data.profits || []).map((profit, index) => ({
+          ...profit,
+          uniqueId: profit._id || profit.id || `profit-${index}-${Date.now()}`
+        }));
+        
+        // Remove any duplicates
+        const uniqueProfits = removeDuplicates(cleanProfits, item => item.uniqueId);
+        
+        setProfits(uniqueProfits);
         setProfitSummary(data.data.summary);
       }
     } catch (error) {
@@ -506,9 +581,133 @@ export default function AgentStoreManagement() {
     }
   };
 
-  const withdrawProfit = async (amount) => {
+  // Bank Account Functions
+  const fetchBankAccounts = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('https://cletech-server.onrender.com/api/store/bank-accounts', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        setBankAccounts(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching bank accounts:', error);
+    }
+  };
+
+  const fetchBanks = async () => {
+    setLoadingBanks(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('https://cletech-server.onrender.com/api/store/banks', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        setBanks(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching banks:', error);
+      setError('Failed to fetch banks list');
+    } finally {
+      setLoadingBanks(false);
+    }
+  };
+
+  const fetchWithdrawalHistory = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('https://cletech-server.onrender.com/api/store/withdrawals', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        // Add unique keys to withdrawal history
+        const cleanWithdrawals = (data.data || []).map((withdrawal, index) => ({
+          ...withdrawal,
+          uniqueId: withdrawal._id || withdrawal.reference || `withdrawal-${index}-${Date.now()}`
+        }));
+        
+        setWithdrawalHistory(removeDuplicates(cleanWithdrawals, item => item.uniqueId));
+      }
+    } catch (error) {
+      console.error('Error fetching withdrawal history:', error);
+    }
+  };
+
+  const addBankAccount = async () => {
+    if (!bankForm.accountNumber || !bankForm.bankCode) {
+      setError('Please fill all required fields');
+      return;
+    }
+
     setSaving(true);
     setError('');
+    setProcessingMessage('Verifying bank account...');
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('https://cletech-server.onrender.com/api/store/bank-account', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(bankForm)
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSuccess('Bank account added successfully!');
+        setBankForm({ accountNumber: '', bankCode: '', accountName: '' });
+        setShowAddBankModal(false);
+        fetchBankAccounts();
+      } else {
+        setError(data.message || 'Failed to add bank account');
+      }
+    } catch (error) {
+      console.error('Error adding bank account:', error);
+      setError('Failed to add bank account. Please try again.');
+    } finally {
+      setSaving(false);
+      setProcessingMessage('');
+    }
+  };
+
+  const processWithdrawal = async () => {
+    const amount = parseFloat(withdrawForm.amount);
+    
+    if (!amount || amount < 10) {
+      setError('Minimum withdrawal amount is GH₵ 10');
+      return;
+    }
+
+    if (amount > profitSummary.creditedProfit) {
+      setError('Insufficient available balance');
+      return;
+    }
+
+    if (!bankAccounts && withdrawForm.useSavedAccount) {
+      setError('Please add a bank account first');
+      setShowAddBankModal(true);
+      return;
+    }
+
+    setProcessingWithdrawal(true);
+    setError('');
+    setProcessingMessage('Processing withdrawal...');
 
     try {
       const token = localStorage.getItem('token');
@@ -518,27 +717,40 @@ export default function AgentStoreManagement() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ amount })
+        body: JSON.stringify({
+          amount,
+          reason: withdrawForm.reason,
+          useSavedAccount: withdrawForm.useSavedAccount
+        })
       });
 
       const data = await response.json();
 
       if (data.success) {
-        setSuccess('Profit withdrawn successfully!');
+        setSuccess(data.message);
+        setWithdrawForm({ amount: '', reason: 'Agent profit withdrawal', useSavedAccount: true });
+        setShowWithdrawModal(false);
         fetchProfits();
+        fetchWithdrawalHistory();
         fetchStoreData();
+        
+        if (data.data.status === 'pending') {
+          setProcessingMessage('Your withdrawal is being processed and will be completed shortly');
+          setTimeout(() => setProcessingMessage(''), 5000);
+        }
       } else {
-        setError(data.message || 'Failed to withdraw profit');
+        setError(data.message || 'Withdrawal failed');
       }
     } catch (error) {
-      console.error('Error withdrawing profit:', error);
-      setError('Failed to withdraw profit. Please try again.');
+      console.error('Error processing withdrawal:', error);
+      setError('Failed to process withdrawal. Please try again.');
     } finally {
-      setSaving(false);
+      setProcessingWithdrawal(false);
+      setProcessingMessage('');
     }
   };
 
-  // Render Functions
+  // ==================== RENDER FUNCTIONS ====================
   const renderCreateStore = () => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -546,7 +758,6 @@ export default function AgentStoreManagement() {
       className="max-w-2xl mx-auto"
     >
       <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 relative ${saving ? 'opacity-75' : ''}`}>
-        {/* Loading Overlay */}
         {saving && (
           <div className="absolute inset-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
             <div className="text-center">
@@ -567,7 +778,6 @@ export default function AgentStoreManagement() {
         </div>
 
         <div className="space-y-4">
-          {/* Show inline error/success messages */}
           {error && !saving && (
             <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start">
               <AlertCircle className="w-5 h-5 text-red-600 mr-2 flex-shrink-0 mt-0.5" />
@@ -757,7 +967,6 @@ export default function AgentStoreManagement() {
 
   const renderOverview = () => (
     <div className="space-y-6">
-      {/* Store Status Card */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Store Status</h3>
@@ -813,7 +1022,6 @@ export default function AgentStoreManagement() {
         </div>
       </div>
 
-      {/* Profit Overview */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Profit Overview</h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -844,7 +1052,6 @@ export default function AgentStoreManagement() {
         </div>
       </div>
 
-      {/* Contact Information Card */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Contact Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -899,7 +1106,6 @@ export default function AgentStoreManagement() {
         </div>
       </div>
 
-      {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <button
           onClick={() => setActiveTab('settings')}
@@ -948,7 +1154,6 @@ export default function AgentStoreManagement() {
 
   const renderSettings = () => (
     <div className="space-y-6">
-      {/* Store Images */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Store Images</h3>
         
@@ -1037,7 +1242,6 @@ export default function AgentStoreManagement() {
         )}
       </div>
 
-      {/* Basic Information */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Basic Information</h3>
         
@@ -1124,7 +1328,6 @@ export default function AgentStoreManagement() {
         </div>
       </div>
 
-      {/* Store Settings */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Store Settings</h3>
         
@@ -1179,7 +1382,6 @@ export default function AgentStoreManagement() {
         </div>
       </div>
 
-      {/* Save Button */}
       <button
         onClick={updateSettings}
         disabled={saving}
@@ -1202,7 +1404,6 @@ export default function AgentStoreManagement() {
 
   const renderPricing = () => (
     <div className="space-y-6">
-      {/* Add Pricing Button */}
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Product Pricing</h3>
         <button
@@ -1214,7 +1415,6 @@ export default function AgentStoreManagement() {
         </button>
       </div>
 
-      {/* Pricing List */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -1246,8 +1446,11 @@ export default function AgentStoreManagement() {
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {customPricing.map((pricing, index) => {
                 const network = networks.find(n => n.id === pricing.network);
+                // Generate a unique key for each pricing item
+                const uniqueKey = pricing.uniqueId || pricing._id || `${pricing.network}-${pricing.capacity}-${index}`;
+                
                 return (
-                  <tr key={index}>
+                  <tr key={uniqueKey}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className="px-2 py-1 text-xs font-medium rounded"
@@ -1301,7 +1504,6 @@ export default function AgentStoreManagement() {
         </div>
       </div>
 
-      {/* Pricing Modal */}
       <AnimatePresence>
         {showPricingModal && (
           <motion.div
@@ -1404,107 +1606,105 @@ export default function AgentStoreManagement() {
     </div>
   );
 
-  const renderAnalytics = () => {
-    // Removed useEffect from here - it's now in the main component body
-    return (
-      <div className="space-y-6">
-        {/* Period Selector */}
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Store Analytics</h3>
-          <select
-            onChange={(e) => fetchAnalytics(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="today">Today</option>
-            <option value="7days">Last 7 Days</option>
-            <option value="30days">Last 30 Days</option>
-            <option value="all">All Time</option>
-          </select>
-        </div>
+  const renderAnalytics = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Store Analytics</h3>
+        <select
+          onChange={(e) => fetchAnalytics(e.target.value)}
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="today">Today</option>
+          <option value="7days">Last 7 Days</option>
+          <option value="30days">Last 30 Days</option>
+          <option value="all">All Time</option>
+        </select>
+      </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Sales</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {analytics.summary?.totalSales || 0}
-                </p>
-              </div>
-              <ShoppingBag className="w-8 h-8 text-blue-600" />
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Revenue</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  GH₵ {analytics.summary?.totalRevenue?.toFixed(2) || '0.00'}
-                </p>
-              </div>
-              <DollarSign className="w-8 h-8 text-green-600" />
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Profit</p>
-                <p className="text-2xl font-bold text-green-600">
-                  GH₵ {analytics.summary?.totalProfit?.toFixed(2) || '0.00'}
-                </p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        {/* Customer Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-          <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-4">Customer Metrics</h4>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Total Customers</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">
-                {analytics.customerMetrics?.total || 0}
+              <p className="text-sm text-gray-600 dark:text-gray-400">Total Sales</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {analytics.summary?.totalSales || 0}
               </p>
             </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">New Customers</p>
-              <p className="text-xl font-bold text-blue-600">
-                {analytics.customerMetrics?.new || 0}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Repeat Customers</p>
-              <p className="text-xl font-bold text-green-600">
-                {analytics.customerMetrics?.repeat || 0}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Repeat Rate</p>
-              <p className="text-xl font-bold text-purple-600">
-                {analytics.customerMetrics?.repeatRate || 0}%
-              </p>
-            </div>
+            <ShoppingBag className="w-8 h-8 text-blue-600" />
           </div>
         </div>
 
-        {/* Top Products */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-          <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-4">Top Products</h4>
-          <div className="space-y-3">
-            {analytics.topProducts?.map((product, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Total Revenue</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                GH₵ {analytics.summary?.totalRevenue?.toFixed(2) || '0.00'}
+              </p>
+            </div>
+            <DollarSign className="w-8 h-8 text-green-600" />
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Total Profit</p>
+              <p className="text-2xl font-bold text-green-600">
+                GH₵ {analytics.summary?.totalProfit?.toFixed(2) || '0.00'}
+              </p>
+            </div>
+            <TrendingUp className="w-8 h-8 text-green-600" />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+        <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-4">Customer Metrics</h4>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Total Customers</p>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">
+              {analytics.customerMetrics?.total || 0}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">New Customers</p>
+            <p className="text-xl font-bold text-blue-600">
+              {analytics.customerMetrics?.new || 0}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Repeat Customers</p>
+            <p className="text-xl font-bold text-green-600">
+              {analytics.customerMetrics?.repeat || 0}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Repeat Rate</p>
+            <p className="text-xl font-bold text-purple-600">
+              {analytics.customerMetrics?.repeatRate || 0}%
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+        <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-4">Top Products</h4>
+        <div className="space-y-3">
+          {analytics.topProducts?.map((product, index) => {
+            // Create unique key from product data
+            const uniqueKey = `${product._id?.network || 'unknown'}-${product._id?.capacity || 'unknown'}-${index}`;
+            
+            return (
+              <div key={uniqueKey} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <div className="flex items-center">
                   <span className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold text-sm mr-3">
                     {index + 1}
                   </span>
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white">
-                      {product._id.network} {product._id.capacity}GB
+                      {product._id?.network} {product._id?.capacity}GB
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       {product.count} sales
@@ -1520,97 +1720,221 @@ export default function AgentStoreManagement() {
                   </p>
                 </div>
               </div>
-            ))}
-            {(!analytics.topProducts || analytics.topProducts.length === 0) && (
-              <p className="text-center text-gray-500 dark:text-gray-400 py-4">
-                No sales data available for this period
-              </p>
-            )}
-          </div>
+            );
+          })}
+          {(!analytics.topProducts || analytics.topProducts.length === 0) && (
+            <p className="text-center text-gray-500 dark:text-gray-400 py-4">
+              No sales data available for this period
+            </p>
+          )}
         </div>
       </div>
-    );
-  };
+    </div>
+  );
 
-  const renderProfits = () => {
-    // Removed useEffect from here - it's now in the main component body
-    return (
-      <div className="space-y-6">
-        {/* Profit Summary */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Profit Summary</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Total Profit</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                GH₵ {profitSummary.totalProfit?.toFixed(2)}
-              </p>
-            </div>
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Pending</p>
-              <p className="text-2xl font-bold text-yellow-600">
-                GH₵ {profitSummary.pendingProfit?.toFixed(2)}
-              </p>
-            </div>
-            <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Available</p>
-              <p className="text-2xl font-bold text-green-600">
-                GH₵ {profitSummary.creditedProfit?.toFixed(2)}
-              </p>
-            </div>
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Withdrawn</p>
-              <p className="text-2xl font-bold text-blue-600">
-                GH₵ {profitSummary.withdrawnProfit?.toFixed(2)}
-              </p>
-            </div>
-          </div>
-
-          {profitSummary.creditedProfit > 0 && (
+  const renderProfits = () => (
+    <div className="space-y-6">
+      {/* Bank Account Section */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Bank Account</h3>
+          {!bankAccounts && (
             <button
               onClick={() => {
-                const amount = prompt('Enter amount to withdraw:');
-                if (amount && !isNaN(amount) && parseFloat(amount) > 0) {
-                  withdrawProfit(parseFloat(amount));
-                }
+                setShowAddBankModal(true);
+                fetchBanks();
               }}
-              className="mt-4 px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center"
             >
-              <Wallet className="w-4 h-4 mr-2" />
-              Withdraw to Wallet
+              <Plus className="w-4 h-4 mr-2" />
+              Add Bank Account
             </button>
           )}
         </div>
-
-        {/* Profit History */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h4 className="text-md font-semibold text-gray-900 dark:text-white">Profit History</h4>
+        
+        {bankAccounts ? (
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">{bankAccounts.accountName}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Account: {bankAccounts.accountNumber}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Bank Code: {bankAccounts.bankCode}
+                </p>
+              </div>
+              {bankAccounts.isVerified && (
+                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                  Verified
+                </span>
+              )}
+            </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Product
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Customer
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Profit
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {profits.map((profit, index) => (
-                  <tr key={index}>
+        ) : (
+          <div className="text-center py-6 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <Building className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-600 dark:text-gray-400">No bank account added</p>
+            <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+              Add a bank account to withdraw your profits
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Profit Summary */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Profit Summary</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Total Profit</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              GH₵ {profitSummary.totalProfit?.toFixed(2)}
+            </p>
+          </div>
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Pending</p>
+            <p className="text-2xl font-bold text-yellow-600">
+              GH₵ {profitSummary.pendingProfit?.toFixed(2)}
+            </p>
+          </div>
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Available</p>
+            <p className="text-2xl font-bold text-green-600">
+              GH₵ {profitSummary.creditedProfit?.toFixed(2)}
+            </p>
+          </div>
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Withdrawn</p>
+            <p className="text-2xl font-bold text-blue-600">
+              GH₵ {profitSummary.withdrawnProfit?.toFixed(2)}
+            </p>
+          </div>
+        </div>
+
+        {profitSummary.creditedProfit >= 10 && (
+          <button
+            onClick={() => setShowWithdrawModal(true)}
+            className="mt-4 px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center"
+          >
+            <CreditCard className="w-4 h-4 mr-2" />
+            Withdraw to Bank
+          </button>
+        )}
+        
+        {profitSummary.creditedProfit > 0 && profitSummary.creditedProfit < 10 && (
+          <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+            Minimum withdrawal amount is GH₵ 10. Current available: GH₵ {profitSummary.creditedProfit?.toFixed(2)}
+          </p>
+        )}
+      </div>
+
+      {/* Withdrawal History */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h4 className="text-md font-semibold text-gray-900 dark:text-white">Withdrawal History</h4>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Reference
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Account
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {withdrawalHistory.map((withdrawal, index) => {
+                // Generate unique key
+                const uniqueKey = withdrawal.uniqueId || generateUniqueKey(withdrawal, 'withdrawal');
+                
+                return (
+                  <tr key={uniqueKey}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                      {new Date(withdrawal.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-mono">
+                      {withdrawal.reference?.slice(-8) || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                      GH₵ {withdrawal.amount?.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                        withdrawal.status === 'completed'
+                          ? 'bg-green-100 text-green-700'
+                          : withdrawal.status === 'pending'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : withdrawal.status === 'processing'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-red-100 text-red-700'
+                      }`}>
+                        {withdrawal.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                      {withdrawal.withdrawalDetails?.accountNumber ? 
+                        `${withdrawal.withdrawalDetails.accountNumber.slice(0, 3)}****${withdrawal.withdrawalDetails.accountNumber.slice(-3)}` 
+                        : 'N/A'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {withdrawalHistory.length === 0 && (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              No withdrawal history
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Profit History */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h4 className="text-md font-semibold text-gray-900 dark:text-white">Profit History</h4>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Product
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Customer
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Profit
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {profits.map((profit, index) => {
+                // Generate unique key
+                const uniqueKey = profit.uniqueId || generateUniqueKey(profit, 'profit');
+                
+                return (
+                  <tr key={uniqueKey}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                       {new Date(profit.createdAt).toLocaleDateString()}
                     </td>
@@ -1635,21 +1959,243 @@ export default function AgentStoreManagement() {
                       </span>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            {profits.length === 0 && (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                No profit records found
-              </div>
-            )}
-          </div>
+                );
+              })}
+            </tbody>
+          </table>
+          {profits.length === 0 && (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              No profit records found
+            </div>
+          )}
         </div>
       </div>
-    );
-  };
 
-  // Main Render
+      {/* Add Bank Account Modal */}
+      <AnimatePresence>
+        {showAddBankModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowAddBankModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Add Bank Account
+              </h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Select Bank
+                  </label>
+                  <select
+                    value={bankForm.bankCode}
+                    onChange={(e) => setBankForm({...bankForm, bankCode: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={loadingBanks}
+                  >
+                    <option value="">Select a bank</option>
+                    {banks.map((bank, index) => (
+                      <option key={`${bank.code}-${bank.id || index}`} value={bank.code}>
+                        {bank.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Account Number
+                  </label>
+                  <input
+                    type="text"
+                    value={bankForm.accountNumber}
+                    onChange={(e) => setBankForm({...bankForm, accountNumber: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter account number"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Account Name
+                  </label>
+                  <input
+                    type="text"
+                    value={bankForm.accountName}
+                    onChange={(e) => setBankForm({...bankForm, accountName: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter account name"
+                  />
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    This will be verified with the bank
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={() => setShowAddBankModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={addBankAccount}
+                  disabled={saving || !bankForm.bankCode || !bankForm.accountNumber}
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Verifying...
+                    </>
+                  ) : (
+                    'Add Account'
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Withdrawal Modal */}
+      <AnimatePresence>
+        {showWithdrawModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowWithdrawModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Withdraw Profits
+              </h3>
+
+              <div className="space-y-4">
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Available Balance</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    GH₵ {profitSummary.creditedProfit?.toFixed(2)}
+                  </p>
+                </div>
+
+                {bankAccounts && (
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Withdraw To:</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      {bankAccounts.accountName}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500">
+                      {bankAccounts.accountNumber} • {bankAccounts.bankCode}
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Amount (GH₵)
+                  </label>
+                  <input
+                    type="number"
+                    value={withdrawForm.amount}
+                    onChange={(e) => setWithdrawForm({...withdrawForm, amount: e.target.value})}
+                    min="10"
+                    max={profitSummary.creditedProfit}
+                    step="0.01"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter amount"
+                  />
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Minimum: GH₵ 10 • Maximum: GH₵ {profitSummary.creditedProfit?.toFixed(2)}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Reason (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={withdrawForm.reason}
+                    onChange={(e) => setWithdrawForm({...withdrawForm, reason: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Withdrawal reason"
+                  />
+                </div>
+
+                {processingMessage && (
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <p className="text-sm text-blue-600 dark:text-blue-400">{processingMessage}</p>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={() => setShowWithdrawModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors"
+                  disabled={processingWithdrawal}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={processWithdrawal}
+                  disabled={processingWithdrawal || !withdrawForm.amount || parseFloat(withdrawForm.amount) < 10}
+                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {processingWithdrawal ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Withdraw
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                  <AlertCircle className="w-4 h-4 inline mr-1" />
+                  Withdrawals are processed via Paystack and typically arrive within 24 hours.
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+
+  // ==================== MAIN RENDER ====================
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1670,7 +2216,6 @@ export default function AgentStoreManagement() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Success/Error Messages */}
       <AnimatePresence>
         {success && (
           <motion.div
@@ -1697,7 +2242,6 @@ export default function AgentStoreManagement() {
       </AnimatePresence>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
@@ -1734,7 +2278,6 @@ export default function AgentStoreManagement() {
           </div>
         </div>
 
-        {/* Navigation Tabs */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-2 mb-6">
           <div className="flex gap-2 overflow-x-auto">
             {[
@@ -1763,7 +2306,6 @@ export default function AgentStoreManagement() {
           </div>
         </div>
 
-        {/* Content */}
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
