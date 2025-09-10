@@ -83,7 +83,7 @@ export default function PaymentVerification() {
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       // Call backend to verify payment
-      const response = await fetch(`https://cletech-server.onrender.com/api/purchase/verify/${reference}`, {
+      const response = await fetch(`https://api.cletech.shop/api/purchase/verify/${reference}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -132,7 +132,7 @@ export default function PaymentVerification() {
 
   const verifyPaymentRetry = async () => {
     try {
-      const response = await fetch(`https://cletech-server.onrender.com/api/purchase/verify/${reference}`, {
+      const response = await fetch(`https://api.cletech.shop/api/purchase/verify/${reference}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

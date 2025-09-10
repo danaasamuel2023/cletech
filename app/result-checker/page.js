@@ -58,7 +58,7 @@ function CheckerPurchase() {
         examType: selectedExamType
       });
 
-      const response = await fetch(`https://cletech-server.onrender.com/api/checkers/available?${params}`);
+      const response = await fetch(`https://api.cletech.shop/api/checkers/available?${params}`);
       const data = await response.json();
       
       if (data.success) {
@@ -88,7 +88,7 @@ function CheckerPurchase() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('https://cletech-server.onrender.com/api/auth/profile', {
+      const response = await fetch('https://api.cletech.shop/api/auth/profile', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -108,7 +108,7 @@ function CheckerPurchase() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('https://cletech-server.onrender.com/api/checkers/my-checkers', {
+      const response = await fetch('https://api.cletech.shop/api/checkers/my-checkers', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -168,7 +168,7 @@ function CheckerPurchase() {
       const token = localStorage.getItem('token');
       const cleanedPhone = phoneNumber.replace(/\D/g, '');
       
-      const response = await fetch('https://cletech-server.onrender.com/api/checkers/purchase', {
+      const response = await fetch('https://api.cletech.shop/api/checkers/purchase', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -226,7 +226,7 @@ function CheckerPurchase() {
   const handleUseChecker = async (checkerId, studentPhone) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://cletech-server.onrender.com/api/checkers/use/${checkerId}`, {
+      const response = await fetch(`https://api.cletech.shop/api/checkers/use/${checkerId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

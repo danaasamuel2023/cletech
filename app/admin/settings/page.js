@@ -28,7 +28,7 @@ export default function SystemSettings() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://cletech-server.onrender.com/api/admin/settings', {
+      const response = await fetch('https://api.cletech.shop/api/admin/settings', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -64,7 +64,7 @@ export default function SystemSettings() {
       
       const routeName = routeMap[category] || category;
       
-      const response = await fetch(`https://cletech-server.onrender.com/api/admin/settings/${routeName}`, {
+      const response = await fetch(`https://api.cletech.shop/api/admin/settings/${routeName}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -92,7 +92,7 @@ export default function SystemSettings() {
   const handleToggleMaintenanceMode = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://cletech-server.onrender.com/api/admin/settings/maintenance/toggle', {
+      const response = await fetch('https://api.cletech.shop/api/admin/settings/maintenance/toggle', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -115,7 +115,7 @@ export default function SystemSettings() {
   const handleExportSettings = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://cletech-server.onrender.com/api/admin/settings/export', {
+      const response = await fetch('https://api.cletech.shop/api/admin/settings/export', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       

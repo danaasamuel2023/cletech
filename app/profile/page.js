@@ -43,7 +43,7 @@ export default function UserProfile() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://cletech-server.onrender.com/api/auth/profile', {
+      const response = await fetch('https://api.cletech.shop/api/auth/profile', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -90,7 +90,7 @@ export default function UserProfile() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://cletech-server.onrender.com/api/auth/profile', {
+      const response = await fetch('https://api.cletech.shop/api/auth/profile', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

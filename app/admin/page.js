@@ -153,7 +153,7 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/admin/analytics/dashboard', {
+      const response = await fetch('https://api.cletech.shop/api/admin/analytics/dashboard', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -176,7 +176,7 @@ export default function AdminDashboard() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/admin/activities/recent?limit=10', {
+      const response = await fetch('https://api.cletech.shop/api/admin/activities/recent?limit=10', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       

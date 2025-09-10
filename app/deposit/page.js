@@ -32,7 +32,7 @@ const PaystackDeposit = () => {
   const fetchPaymentConfig = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://cletech-server.onrender.com/api/deposites/config', {
+      const response = await fetch('https://api.cletech.shop/api/deposites/config', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -49,7 +49,7 @@ const PaystackDeposit = () => {
   const fetchUserWallet = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://cletech-server.onrender.com/api/users/wallet', {
+      const response = await fetch('https://api.cletech.shop/api/users/wallet', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -66,7 +66,7 @@ const PaystackDeposit = () => {
   const fetchRecentDeposits = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://cletech-server.onrender.com/api/deposits/history?limit=5', {
+      const response = await fetch('https://api.cletech.shop/api/deposits/history?limit=5', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -107,7 +107,7 @@ const PaystackDeposit = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://cletech-server.onrender.com/api/deposites/initialize', {
+      const response = await fetch('https://api.cletech.shop/api/deposites/initialize', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

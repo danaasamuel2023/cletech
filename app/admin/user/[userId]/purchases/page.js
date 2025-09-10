@@ -48,7 +48,7 @@ export default function UserPurchases() {
       });
 
       const response = await fetch(
-        `https://cletech-server.onrender.com/api/admin/users/${userId}/purchases?${queryParams}`,
+        `https://api.cletech.shop/api/admin/users/${userId}/purchases?${queryParams}`,
         {
           headers: { 'Authorization': `Bearer ${token}` }
         }
@@ -82,7 +82,7 @@ export default function UserPurchases() {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `https://cletech-server.onrender.com/api/admin/users/${userId}/purchases/summary?days=30`,
+        `https://api.cletech.shop/api/admin/users/${userId}/purchases/summary?days=30`,
         {
           headers: { 'Authorization': `Bearer ${token}` }
         }

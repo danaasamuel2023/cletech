@@ -63,7 +63,7 @@ export default function UsersManagement() {
         ...filters
       });
       
-      const response = await fetch(`https://cletech-server.onrender.com/api/admin/users?${queryParams}`, {
+      const response = await fetch(`https://api.cletech.shop/api/admin/users?${queryParams}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -85,7 +85,7 @@ export default function UsersManagement() {
     setActionLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://cletech-server.onrender.com/api/admin/users/${userId}/approve`, {
+      const response = await fetch(`https://api.cletech.shop/api/admin/users/${userId}/approve`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -110,7 +110,7 @@ export default function UsersManagement() {
     setActionLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://cletech-server.onrender.com/api/admin/users/${userId}/disable`, {
+      const response = await fetch(`https://api.cletech.shop/api/admin/users/${userId}/disable`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -135,7 +135,7 @@ export default function UsersManagement() {
     setActionLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://cletech-server.onrender.com/api/admin/users/${userId}/role`, {
+      const response = await fetch(`https://api.cletech.shop/api/admin/users/${userId}/role`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -165,7 +165,7 @@ export default function UsersManagement() {
     setActionLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://cletech-server.onrender.com/api/admin/wallet/${action}`, {
+      const response = await fetch(`https://api.cletech.shop/api/admin/wallet/${action}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -196,7 +196,7 @@ export default function UsersManagement() {
     setActionLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://cletech-server.onrender.com/api/admin/users/${selectedUser._id}/api-access`, {
+      const response = await fetch(`https://api.cletech.shop/api/admin/users/${selectedUser._id}/api-access`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

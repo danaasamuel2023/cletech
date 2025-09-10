@@ -101,7 +101,7 @@ export default function PublicAgentStore() {
   const fetchStoreData = async () => {
     setLoading(true);
     try {
-      const storeResponse = await fetch(`https://cletech-server.onrender.com/api/store/public/${subdomain}`);
+      const storeResponse = await fetch(`https://api.cletech.shop/api/store/public/${subdomain}`);
       const storeData = await storeResponse.json();
 
       if (!storeData.success) {
@@ -116,7 +116,7 @@ export default function PublicAgentStore() {
         setShowClosedModal(true);
       }
 
-      const productsResponse = await fetch(`https://cletech-server.onrender.com/api/store/public/${subdomain}/products`);
+      const productsResponse = await fetch(`https://api.cletech.shop/api/store/public/${subdomain}/products`);
       const productsData = await productsResponse.json();
 
       if (productsData.success) {
@@ -145,7 +145,7 @@ export default function PublicAgentStore() {
     setError('');
     
     try {
-      const response = await fetch(`https://cletech-server.onrender.com/api/purchase/verify/${reference}`);
+      const response = await fetch(`https://api.cletech.shop/api/purchase/verify/${reference}`);
       const data = await response.json();
       
       if (data.success) {
@@ -235,7 +235,7 @@ export default function PublicAgentStore() {
     setError('');
 
     try {
-      const response = await fetch(`https://cletech-server.onrender.com/api/purchase/store/${subdomain}`, {
+      const response = await fetch(`https://api.cletech.shop/api/purchase/store/${subdomain}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

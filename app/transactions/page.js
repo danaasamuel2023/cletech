@@ -72,7 +72,7 @@ export default function TransactionHistory() {
         ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v))
       });
 
-      const response = await fetch(`https://cletech-server.onrender.com/api/transactions?${params}`, {
+      const response = await fetch(`https://api.cletech.shop/api/transactions?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -113,7 +113,7 @@ export default function TransactionHistory() {
       });
 
       const response = await fetch(
-        `https://cletech-server.onrender.com/api/transactions/export/${format}?${params}`,
+        `https://api.cletech.shop/api/transactions/export/${format}?${params}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`

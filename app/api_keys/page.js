@@ -50,7 +50,7 @@ export default function ApiKeysPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://cletech-server.onrender.com/api/auth/profile/api-keys', {
+      const response = await fetch('https://api.cletech.shop/api/auth/profile/api-keys', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -81,7 +81,7 @@ export default function ApiKeysPage() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://cletech-server.onrender.com/api/auth/profile/api-keys', {
+      const response = await fetch('https://api.cletech.shop/api/auth/profile/api-keys', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -124,7 +124,7 @@ export default function ApiKeysPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://cletech-server.onrender.com/api/auth/profile/api-keys/${keyId}`, {
+      const response = await fetch(`https://api.cletech.shop/api/auth/profile/api-keys/${keyId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -153,7 +153,7 @@ export default function ApiKeysPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://cletech-server.onrender.com/api/auth/profile/api-keys/${keyId}/regenerate`, {
+      const response = await fetch(`https://api.cletech.shop/api/auth/profile/api-keys/${keyId}/regenerate`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -181,7 +181,7 @@ export default function ApiKeysPage() {
     setLoadingStats(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://cletech-server.onrender.com/api/auth/profile/api-keys/${keyId}/stats`, {
+      const response = await fetch(`https://api.cletech.shop/api/auth/profile/api-keys/${keyId}/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

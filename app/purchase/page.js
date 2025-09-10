@@ -197,7 +197,7 @@ function DataPurchaseContent() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://cletech-server.onrender.com/api/purchase/products', {
+      const response = await fetch('https://api.cletech.shop/api/purchase/products', {
         headers: {
           'Authorization': token ? `Bearer ${token}` : ''
         }
@@ -231,7 +231,7 @@ function DataPurchaseContent() {
         return;
       }
 
-      const response = await fetch('https://cletech-server.onrender.com/api/auth/profile', {
+      const response = await fetch('https://api.cletech.shop/api/auth/profile', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -302,7 +302,7 @@ function DataPurchaseContent() {
       const token = localStorage.getItem('token');
       const cleanedPhone = phoneNumber.replace(/\D/g, '');
       
-      const response = await fetch('http://localhost:5000/api/purchase/buy', {
+      const response = await fetch('https://api.cletech.shop/api/purchase/buy', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
