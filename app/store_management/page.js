@@ -1,4 +1,4 @@
-// app/dashboard/store/page.js - Complete Agent Store Management with All Fixes
+// app/dashboard/store/page.js - Complete Agent Store Management with Mobile Money Support
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -94,21 +94,33 @@ export default function AgentStoreManagement() {
     withdrawnProfit: 0
   });
 
-  // Bank & Withdrawal States
-  const [bankAccounts, setBankAccounts] = useState(null);
-  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
-  const [showAddBankModal, setShowAddBankModal] = useState(false);
+  // Payment Method States (Updated for Mobile Money)
+  const [paymentMethod, setPaymentMethod] = useState(null);
+  const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false);
+  const [paymentMethodType, setPaymentMethodType] = useState('momo'); // 'bank' or 'momo'
   const [withdrawalHistory, setWithdrawalHistory] = useState([]);
   const [banks, setBanks] = useState([]);
   const [loadingBanks, setLoadingBanks] = useState(false);
   const [processingWithdrawal, setProcessingWithdrawal] = useState(false);
   
+  // Bank Form
   const [bankForm, setBankForm] = useState({
     accountNumber: '',
     bankCode: '',
     accountName: ''
   });
   
+  // Mobile Money Form
+  const [momoForm, setMomoForm] = useState({
+    momoNumber: '',
+    momoNetwork: 'mtn',
+    momoName: ''
+  });
+  const [validatingMomo, setValidatingMomo] = useState(false);
+  const [momoValidated, setMomoValidated] = useState(false);
+  
+  // Withdrawal Form
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawForm, setWithdrawForm] = useState({
     amount: '',
     reason: 'Agent profit withdrawal',
@@ -151,11 +163,9 @@ export default function AgentStoreManagement() {
     if (item._id) return item._id;
     if (item.id) return item.id;
     if (item.reference) return item.reference;
-    // Create a unique key from multiple fields
     return `${prefix}-${item.network || ''}-${item.capacity || ''}-${item.createdAt || Date.now()}-${Math.random()}`;
   };
 
-  // Copy to clipboard function
   const copyToClipboard = async (text, message = 'Copied to clipboard!') => {
     try {
       await navigator.clipboard.writeText(text);
@@ -164,6 +174,63 @@ export default function AgentStoreManagement() {
     } catch (err) {
       setError('Failed to copy to clipboard');
       setTimeout(() => setError(''), 2000);
+    }
+  };
+
+  // ==================== MOBILE MONEY VALIDATION ====================
+  const validateMoMo = async () => {
+    if (!momoForm.momoNumber || !momoForm.momoNetwork) {
+      setError('Please enter mobile money number and select network');
+      return;
+    }
+
+    // Validate phone format
+    const phoneRegex = /^(\+233|0)[235]\d{8}$/;
+    if (!phoneRegex.test(momoForm.momoNumber)) {
+      setError('Invalid Ghana mobile money number format');
+      return;
+    }
+
+    setValidatingMomo(true);
+    setError('');
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('https://api.cletech.shop/api/store/validate-momo', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          phoneNumber: momoForm.momoNumber,
+          network: momoForm.momoNetwork
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setMomoValidated(true);
+        if (data.data.accountName) {
+          setMomoForm({
+            ...momoForm,
+            momoName: data.data.accountName
+          });
+          setSuccess('Mobile money account validated successfully!');
+        } else if (data.data.requiresManualName) {
+          setSuccess('Phone number validated. Please enter your registered name.');
+        }
+      } else {
+        setError(data.message || 'Failed to validate mobile money account');
+        setMomoValidated(false);
+      }
+    } catch (error) {
+      console.error('MoMo validation error:', error);
+      setError('Failed to validate mobile money account');
+      setMomoValidated(false);
+    } finally {
+      setValidatingMomo(false);
     }
   };
 
@@ -184,7 +251,6 @@ export default function AgentStoreManagement() {
 
   // ==================== INITIAL DATA LOAD ====================
   useEffect(() => {
-    // Run cleanup on initial mount
     const cleanupData = async () => {
       try {
         const token = localStorage.getItem('token');
@@ -217,7 +283,7 @@ export default function AgentStoreManagement() {
   useEffect(() => {
     if (activeTab === 'profits') {
       fetchProfits();
-      fetchBankAccounts();
+      fetchPaymentMethod();
       fetchWithdrawalHistory();
     }
   }, [activeTab]);
@@ -244,7 +310,6 @@ export default function AgentStoreManagement() {
           settings: data.data.settings || settingsForm.settings
         });
         
-        // Clean up custom pricing to remove duplicates
         const cleanPricing = removeDuplicates(
           data.data.customPricing || [], 
           (item) => `${item.network}-${item.capacity}`
@@ -564,13 +629,11 @@ export default function AgentStoreManagement() {
       const data = await response.json();
 
       if (data.success) {
-        // Clean profits data
         const cleanProfits = (data.data.profits || []).map((profit, index) => ({
           ...profit,
           uniqueId: profit._id || profit.id || `profit-${index}-${Date.now()}`
         }));
         
-        // Remove any duplicates
         const uniqueProfits = removeDuplicates(cleanProfits, item => item.uniqueId);
         
         setProfits(uniqueProfits);
@@ -581,11 +644,11 @@ export default function AgentStoreManagement() {
     }
   };
 
-  // Bank Account Functions
-  const fetchBankAccounts = async () => {
+  // Fetch Payment Method (Updated)
+  const fetchPaymentMethod = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://api.cletech.shop/api/store/bank-accounts', {
+      const response = await fetch('https://api.cletech.shop/api/store/bank-account', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -593,10 +656,10 @@ export default function AgentStoreManagement() {
       
       const data = await response.json();
       if (data.success) {
-        setBankAccounts(data.data);
+        setPaymentMethod(data.data);
       }
     } catch (error) {
-      console.error('Error fetching bank accounts:', error);
+      console.error('Error fetching payment method:', error);
     }
   };
 
@@ -633,7 +696,6 @@ export default function AgentStoreManagement() {
       
       const data = await response.json();
       if (data.success) {
-        // Add unique keys to withdrawal history
         const cleanWithdrawals = (data.data || []).map((withdrawal, index) => ({
           ...withdrawal,
           uniqueId: withdrawal._id || withdrawal.reference || `withdrawal-${index}-${Date.now()}`
@@ -646,40 +708,91 @@ export default function AgentStoreManagement() {
     }
   };
 
-  const addBankAccount = async () => {
-    if (!bankForm.accountNumber || !bankForm.bankCode) {
-      setError('Please fill all required fields');
-      return;
-    }
-
+  // Add Payment Method (Updated for Mobile Money)
+  const addPaymentMethod = async () => {
     setSaving(true);
     setError('');
-    setProcessingMessage('Verifying bank account...');
+    setProcessingMessage('Adding payment method...');
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://api.cletech.shop/api/store/bank-account', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(bankForm)
-      });
 
-      const data = await response.json();
+      if (paymentMethodType === 'bank') {
+        if (!bankForm.accountNumber || !bankForm.bankCode) {
+          setError('Please fill all bank account fields');
+          setSaving(false);
+          setProcessingMessage('');
+          return;
+        }
 
-      if (data.success) {
-        setSuccess('Bank account added successfully!');
-        setBankForm({ accountNumber: '', bankCode: '', accountName: '' });
-        setShowAddBankModal(false);
-        fetchBankAccounts();
+        const response = await fetch('https://api.cletech.shop/api/store/bank-account', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(bankForm)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          setSuccess('Bank account added successfully!');
+          setBankForm({ accountNumber: '', bankCode: '', accountName: '' });
+          setShowPaymentMethodModal(false);
+          fetchPaymentMethod();
+        } else {
+          setError(data.message || 'Failed to add bank account');
+        }
       } else {
-        setError(data.message || 'Failed to add bank account');
+        // Mobile money
+        if (!momoForm.momoNumber || !momoForm.momoNetwork || !momoForm.momoName) {
+          setError('Please complete all mobile money fields');
+          setSaving(false);
+          setProcessingMessage('');
+          return;
+        }
+
+        if (!momoValidated) {
+          setError('Please validate your mobile money number first');
+          setSaving(false);
+          setProcessingMessage('');
+          return;
+        }
+
+        // Save mobile money as bank account with special handling
+        const response = await fetch('https://api.cletech.shop/api/store/bank-account', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            accountNumber: momoForm.momoNumber,
+            bankCode: momoForm.momoNetwork === 'mtn' ? 'MTN' : 
+                       momoForm.momoNetwork === 'vodafone' ? 'VOD' :
+                       momoForm.momoNetwork === 'telecel' ? 'VOD' : 'ATL',
+            accountName: momoForm.momoName,
+            isMomo: true,
+            momoNetwork: momoForm.momoNetwork
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          setSuccess('Mobile money account added successfully!');
+          setMomoForm({ momoNumber: '', momoNetwork: 'mtn', momoName: '' });
+          setMomoValidated(false);
+          setShowPaymentMethodModal(false);
+          fetchPaymentMethod();
+        } else {
+          setError(data.message || 'Failed to add mobile money account');
+        }
       }
     } catch (error) {
-      console.error('Error adding bank account:', error);
-      setError('Failed to add bank account. Please try again.');
+      console.error('Error adding payment method:', error);
+      setError('Failed to add payment method. Please try again.');
     } finally {
       setSaving(false);
       setProcessingMessage('');
@@ -699,9 +812,9 @@ export default function AgentStoreManagement() {
       return;
     }
 
-    if (!bankAccounts && withdrawForm.useSavedAccount) {
-      setError('Please add a bank account first');
-      setShowAddBankModal(true);
+    if (!paymentMethod && withdrawForm.useSavedAccount) {
+      setError('Please add a payment method first');
+      setShowPaymentMethodModal(true);
       return;
     }
 
@@ -1446,7 +1559,6 @@ export default function AgentStoreManagement() {
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {customPricing.map((pricing, index) => {
                 const network = networks.find(n => n.id === pricing.network);
-                // Generate a unique key for each pricing item
                 const uniqueKey = pricing.uniqueId || pricing._id || `${pricing.network}-${pricing.capacity}-${index}`;
                 
                 return (
@@ -1693,7 +1805,6 @@ export default function AgentStoreManagement() {
         <h4 className="text-md font-semibold text-gray-900 dark:text-white mb-4">Top Products</h4>
         <div className="space-y-3">
           {analytics.topProducts?.map((product, index) => {
-            // Create unique key from product data
             const uniqueKey = `${product._id?.network || 'unknown'}-${product._id?.capacity || 'unknown'}-${index}`;
             
             return (
@@ -1734,49 +1845,86 @@ export default function AgentStoreManagement() {
 
   const renderProfits = () => (
     <div className="space-y-6">
-      {/* Bank Account Section */}
+      {/* Payment Method Section */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Bank Account</h3>
-          {!bankAccounts && (
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Payment Method</h3>
+          {!paymentMethod && (
             <button
               onClick={() => {
-                setShowAddBankModal(true);
-                fetchBanks();
+                setShowPaymentMethodModal(true);
+                setPaymentMethodType('momo');
+                setMomoValidated(false);
               }}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add Bank Account
+              Add Payment Method
             </button>
           )}
         </div>
         
-        {bankAccounts ? (
+        {paymentMethod ? (
           <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
             <div className="flex items-start justify-between">
               <div>
-                <p className="font-medium text-gray-900 dark:text-white">{bankAccounts.accountName}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Account: {bankAccounts.accountNumber}
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Bank Code: {bankAccounts.bankCode}
-                </p>
+                {paymentMethod.isMomo ? (
+                  <>
+                    <div className="flex items-center mb-2">
+                      <Phone className="w-5 h-5 text-green-600 mr-2" />
+                      <p className="font-medium text-gray-900 dark:text-white">Mobile Money</p>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {paymentMethod.accountName}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      Number: {paymentMethod.accountNumber}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Network: {paymentMethod.momoNetwork?.toUpperCase() || paymentMethod.bankCode}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center mb-2">
+                      <Building className="w-5 h-5 text-blue-600 mr-2" />
+                      <p className="font-medium text-gray-900 dark:text-white">Bank Account</p>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {paymentMethod.accountName}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      Account: {paymentMethod.accountNumber}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Bank Code: {paymentMethod.bankCode}
+                    </p>
+                  </>
+                )}
               </div>
-              {bankAccounts.isVerified && (
+              {paymentMethod.isVerified && (
                 <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
                   Verified
                 </span>
               )}
             </div>
+            <button
+              onClick={() => {
+                setShowPaymentMethodModal(true);
+                setPaymentMethodType('momo');
+                setMomoValidated(false);
+              }}
+              className="mt-3 text-sm text-blue-600 hover:text-blue-700"
+            >
+              Change Payment Method
+            </button>
           </div>
         ) : (
           <div className="text-center py-6 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <Building className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600 dark:text-gray-400">No bank account added</p>
+            <Wallet className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-600 dark:text-gray-400">No payment method added</p>
             <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-              Add a bank account to withdraw your profits
+              Add a payment method to withdraw your profits
             </p>
           </div>
         )}
@@ -1818,7 +1966,7 @@ export default function AgentStoreManagement() {
             className="mt-4 px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center"
           >
             <CreditCard className="w-4 h-4 mr-2" />
-            Withdraw to Bank
+            Withdraw to {paymentMethod?.isMomo ? 'Mobile Money' : 'Bank'}
           </button>
         )}
         
@@ -1851,13 +1999,12 @@ export default function AgentStoreManagement() {
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Account
+                  Method
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {withdrawalHistory.map((withdrawal, index) => {
-                // Generate unique key
                 const uniqueKey = withdrawal.uniqueId || generateUniqueKey(withdrawal, 'withdrawal');
                 
                 return (
@@ -1885,9 +2032,7 @@ export default function AgentStoreManagement() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                      {withdrawal.withdrawalDetails?.accountNumber ? 
-                        `${withdrawal.withdrawalDetails.accountNumber.slice(0, 3)}****${withdrawal.withdrawalDetails.accountNumber.slice(-3)}` 
-                        : 'N/A'}
+                      {withdrawal.withdrawalDetails?.isMomo ? 'Mobile Money' : 'Bank Transfer'}
                     </td>
                   </tr>
                 );
@@ -1930,7 +2075,6 @@ export default function AgentStoreManagement() {
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {profits.map((profit, index) => {
-                // Generate unique key
                 const uniqueKey = profit.uniqueId || generateUniqueKey(profit, 'profit');
                 
                 return (
@@ -1971,96 +2115,315 @@ export default function AgentStoreManagement() {
         </div>
       </div>
 
-      {/* Add Bank Account Modal */}
+      {/* Payment Method Modal */}
       <AnimatePresence>
-        {showAddBankModal && (
+        {showPaymentMethodModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowAddBankModal(false)}
+            onClick={() => {
+              setShowPaymentMethodModal(false);
+              setMomoValidated(false);
+              setError('');
+            }}
           >
             <motion.div
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full"
+              className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Add Bank Account
+                Add Payment Method
               </h3>
 
+              {/* Payment Method Type Selection */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => {
+                    setPaymentMethodType('momo');
+                    setMomoValidated(false);
+                    setError('');
+                  }}
+                  className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center ${
+                    paymentMethodType === 'momo'
+                      ? 'bg-green-600 text-white shadow-lg'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  <Phone className="w-4 h-4 mr-2" />
+                  Mobile Money
+                </button>
+                <button
+                  onClick={() => {
+                    setPaymentMethodType('bank');
+                    fetchBanks();
+                    setError('');
+                  }}
+                  className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center justify-center ${
+                    paymentMethodType === 'bank'
+                      ? 'bg-blue-600 text-white shadow-lg'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  <Building className="w-4 h-4 mr-2" />
+                  Bank Account
+                </button>
+              </div>
+
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Select Bank
-                  </label>
-                  <select
-                    value={bankForm.bankCode}
-                    onChange={(e) => setBankForm({...bankForm, bankCode: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    disabled={loadingBanks}
+                {paymentMethodType === 'momo' ? (
+                  <>
+                    {/* Mobile Money Form */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Mobile Network
+                      </label>
+                      <select
+                        value={momoForm.momoNetwork}
+                        onChange={(e) => {
+                          setMomoForm({...momoForm, momoNetwork: e.target.value});
+                          setMomoValidated(false);
+                          setError('');
+                        }}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200"
+                      >
+                        <option value="mtn">MTN Mobile Money</option>
+                        <option value="vodafone">Telecel Cash (Vodafone)</option>
+                        <option value="airteltigo">AirtelTigo Money</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Mobile Money Number
+                      </label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type="tel"
+                            value={momoForm.momoNumber}
+                            onChange={(e) => {
+                              setMomoForm({...momoForm, momoNumber: e.target.value});
+                              setMomoValidated(false);
+                              setError('');
+                            }}
+                            className={`w-full px-4 py-2 pr-10 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 transition-all duration-200 ${
+                              momoValidated 
+                                ? 'border-green-500 focus:ring-green-500' 
+                                : 'border-gray-300 dark:border-gray-600 focus:ring-green-500'
+                            }`}
+                            placeholder="0241234567"
+                            disabled={validatingMomo}
+                          />
+                          {momoValidated && (
+                            <Check className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" />
+                          )}
+                        </div>
+                        <button
+                          onClick={validateMoMo}
+                          disabled={validatingMomo || !momoForm.momoNumber || momoValidated}
+                          className={`px-4 py-2 font-medium rounded-lg transition-all duration-200 flex items-center ${
+                            momoValidated 
+                              ? 'bg-green-100 text-green-700 cursor-default'
+                              : 'bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed'
+                          }`}
+                        >
+                          {validatingMomo ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : momoValidated ? (
+                            <>
+                              <Check className="w-4 h-4 mr-1" />
+                              Validated
+                            </>
+                          ) : (
+                            'Validate'
+                          )}
+                        </button>
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Enter the phone number registered with your mobile money account
+                      </p>
+                    </div>
+
+                    {momoValidated && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Account Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={momoForm.momoName}
+                          onChange={(e) => setMomoForm({...momoForm, momoName: e.target.value})}
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-200"
+                          placeholder="Enter your registered name"
+                        />
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                          Enter the exact name registered with your mobile money account
+                        </p>
+                      </motion.div>
+                    )}
+
+                    {momoValidated && (
+                      <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                        <p className="text-sm text-green-600 dark:text-green-400 flex items-center">
+                          <Check className="w-4 h-4 mr-2 flex-shrink-0" />
+                          Phone number validated. Please enter your account name to continue.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                      <div className="flex items-start">
+                        <AlertCircle className="w-5 h-5 text-amber-600 mr-2 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-amber-800 dark:text-amber-400">
+                            Important Information
+                          </p>
+                          <ul className="mt-1 text-xs text-amber-700 dark:text-amber-300 space-y-1">
+                            <li>• Use your registered mobile money number</li>
+                            <li>• Ensure the name matches your MoMo account</li>
+                            <li>• Withdrawals are usually instant (1-5 minutes)</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Bank Account Form */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Select Bank
+                      </label>
+                      <select
+                        value={bankForm.bankCode}
+                        onChange={(e) => setBankForm({...bankForm, bankCode: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                        disabled={loadingBanks}
+                      >
+                        <option value="">Select a bank</option>
+                        {banks.map((bank, index) => (
+                          <option key={`${bank.code}-${bank.id || index}`} value={bank.code}>
+                            {bank.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Account Number
+                      </label>
+                      <input
+                        type="text"
+                        value={bankForm.accountNumber}
+                        onChange={(e) => setBankForm({...bankForm, accountNumber: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                        placeholder="Enter account number"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Account Name
+                      </label>
+                      <input
+                        type="text"
+                        value={bankForm.accountName}
+                        onChange={(e) => setBankForm({...bankForm, accountName: e.target.value})}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                        placeholder="Will be verified automatically"
+                        disabled
+                      />
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Account name will be fetched from the bank
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                      <div className="flex items-start">
+                        <AlertCircle className="w-5 h-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-blue-800 dark:text-blue-400">
+                            Bank Transfer Information
+                          </p>
+                          <ul className="mt-1 text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                            <li>• Account name will be verified automatically</li>
+                            <li>• Transfers typically take 1-3 hours</li>
+                            <li>• Ensure account details are correct</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
                   >
-                    <option value="">Select a bank</option>
-                    {banks.map((bank, index) => (
-                      <option key={`${bank.code}-${bank.id || index}`} value={bank.code}>
-                        {bank.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    <p className="text-sm text-red-600 dark:text-red-400 flex items-start">
+                      <X className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" />
+                      {error}
+                    </p>
+                  </motion.div>
+                )}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Account Number
-                  </label>
-                  <input
-                    type="text"
-                    value={bankForm.accountNumber}
-                    onChange={(e) => setBankForm({...bankForm, accountNumber: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter account number"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Account Name
-                  </label>
-                  <input
-                    type="text"
-                    value={bankForm.accountName}
-                    onChange={(e) => setBankForm({...bankForm, accountName: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter account name"
-                  />
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    This will be verified with the bank
-                  </p>
-                </div>
+                {processingMessage && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+                  >
+                    <p className="text-sm text-blue-600 dark:text-blue-400 flex items-center">
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      {processingMessage}
+                    </p>
+                  </motion.div>
+                )}
               </div>
 
               <div className="mt-6 flex gap-3">
                 <button
-                  onClick={() => setShowAddBankModal(false)}
+                  onClick={() => {
+                    setShowPaymentMethodModal(false);
+                    setMomoValidated(false);
+                    setError('');
+                    setProcessingMessage('');
+                  }}
                   className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={addBankAccount}
-                  disabled={saving || !bankForm.bankCode || !bankForm.accountNumber}
-                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  onClick={addPaymentMethod}
+                  disabled={
+                    saving || 
+                    (paymentMethodType === 'momo' && (!momoValidated || !momoForm.momoName)) ||
+                    (paymentMethodType === 'bank' && (!bankForm.bankCode || !bankForm.accountNumber))
+                  }
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:from-gray-400 disabled:to-gray-500 flex items-center justify-center shadow-lg"
                 >
                   {saving ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      Verifying...
+                      Processing...
                     </>
                   ) : (
-                    'Add Account'
+                    <>
+                      {paymentMethodType === 'momo' ? <Phone className="w-4 h-4 mr-2" /> : <Building className="w-4 h-4 mr-2" />}
+                      Add {paymentMethodType === 'momo' ? 'Mobile Money' : 'Bank Account'}
+                    </>
                   )}
                 </button>
               </div>
@@ -2098,14 +2461,14 @@ export default function AgentStoreManagement() {
                   </p>
                 </div>
 
-                {bankAccounts && (
+                {paymentMethod && (
                   <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Withdraw To:</p>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      {bankAccounts.accountName}
+                      {paymentMethod.accountName}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500">
-                      {bankAccounts.accountNumber} • {bankAccounts.bankCode}
+                      {paymentMethod.accountNumber} • {paymentMethod.isMomo ? paymentMethod.momoNetwork?.toUpperCase() : paymentMethod.bankCode}
                     </p>
                   </div>
                 )}
@@ -2185,7 +2548,9 @@ export default function AgentStoreManagement() {
               <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <p className="text-xs text-blue-600 dark:text-blue-400">
                   <AlertCircle className="w-4 h-4 inline mr-1" />
-                  Withdrawals are processed via Paystack and typically arrive within 24 hours.
+                  {paymentMethod?.isMomo 
+                    ? 'Mobile money withdrawals are usually instant (1-5 minutes)'
+                    : 'Bank transfers typically take 1-3 hours to complete'}
                 </p>
               </div>
             </motion.div>
@@ -2242,7 +2607,7 @@ export default function AgentStoreManagement() {
       </AnimatePresence>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <Store className="w-8 h-8 text-blue-600 mr-3" />

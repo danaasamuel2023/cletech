@@ -160,7 +160,7 @@ export default function ApiKeysPage() {
         }
       });
 
-      const data = await response.json();
+      const data = await response.json(); 
       
       if (data.success) {
         setSuccess('API key regenerated successfully');
